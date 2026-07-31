@@ -115,7 +115,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <div className="space-y-3 pt-4 border-t border-blue-800/60">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                Supabase Cloud Database Ready
+                Cloud Database Ready
               </span>
               <h2 className="text-2xl font-black text-white tracking-tight leading-snug">
                 Portal Presensi & Pemantauan Siswa
