@@ -525,7 +525,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="h-64 w-full flex flex-col items-center justify-center text-slate-400 text-xs text-center p-4">
               <Car className="w-8 h-8 text-slate-300 mb-2 stroke-1" />
               <p className="font-semibold text-slate-600">Belum ada data moda transportasi</p>
-              <p className="text-[11px] text-slate-400 mt-1">Data akan otomatis muncul di grafik ini saat ada kepulangan siswa terdata di database Supabase.</p>
+              <p className="text-[11px] text-slate-400 mt-1">Data akan otomatis muncul di grafik ini saat ada kepulangan siswa terdata di database.</p>
             </div>
           ) : (
             <div className="h-64 w-full flex items-center justify-center">
@@ -634,7 +634,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="pt-3 border-t border-slate-100 mt-3 text-right">
-            <span className="text-xs text-slate-500 font-medium">Sistem Notifikasi WhatsApp Wali Kelas & Ortu Aktif</span>
+            <span className="text-xs text-slate-500 font-medium">Sistem Notifikasi Aktif</span>
           </div>
         </div>
 

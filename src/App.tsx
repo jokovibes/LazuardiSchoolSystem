@@ -401,10 +401,47 @@ export default function App() {
     addAuditLog('Hapus Siswa', 'Master Siswa', `Menghapus data siswa ${student?.name || studentId}`);
   };
 
-  const handleRegisterFace = (studentId: string, photoUrl: string, accuracyScore: number = 99.8) => {
+  const handleRegisterFace = (
+    studentId: string, 
+    photoUrl: string, 
+    accuracyScore: number = 99.8,
+    anglePhotos?: Record<string, string | undefined>,
+    capturedAnglesCount: number = 5
+  ) => {
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, hasFaceData: true, photoUrl, faceAccuracyScore: accuracyScore } : s));
-    dbUpdateStudentFaceData(studentId, photoUrl, accuracyScore).catch(err => console.error('Supabase error:', err));
-    addAuditLog('Registrasi Vektor Wajah Multi-Sudut', 'Face Profiles', `Mendaftarkan dataset multi-sudut wajah untuk ID ${studentId} (Akurasi: ${accuracyScore}%)`);
+    
+    // Synchronize faceProfiles local state
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      setFaceProfiles(prev => {
+        const exists = prev.some(fp => fp.studentId === studentId);
+        if (exists) {
+          return prev.map(fp => fp.studentId === studentId ? {
+            ...fp,
+            photoUrl,
+            confidenceThreshold: accuracyScore,
+            sampleCount: capturedAnglesCount,
+            registeredAt: new Date().toISOString().split('T')[0]
+          } : fp);
+        } else {
+          return [...prev, {
+            id: `fp-${studentId}`,
+            studentId: studentId,
+            studentName: student.name,
+            nis: student.nis,
+            registeredAt: new Date().toISOString().split('T')[0],
+            photoUrl,
+            confidenceThreshold: accuracyScore,
+            sampleCount: capturedAnglesCount,
+            status: 'Registered'
+          }];
+        }
+      });
+    }
+
+    dbUpdateStudentFaceData(studentId, photoUrl, accuracyScore, anglePhotos, capturedAnglesCount)
+      .catch(err => console.error('Supabase error:', err));
+    addAuditLog('Registrasi Vektor Wajah Multi-Sudut', 'Face Profiles', `Mendaftarkan ${capturedAnglesCount} sudut vektor wajah ke Supabase untuk ID ${studentId} (Akurasi: ${accuracyScore}%)`);
   };
 
   const handleDeleteFaceData = (studentId: string) => {

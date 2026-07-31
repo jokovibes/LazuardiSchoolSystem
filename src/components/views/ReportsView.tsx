@@ -114,7 +114,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             Laporan & Rekap Multi-Format (Harian, Mingguan, Bulanan, Tahunan)
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Ekspor rekapitulasi data lengkap ke PDF, Excel, Print-Friendly, dan WhatsApp Share untuk Kepala Unit & Yayasan.
+            Ekspor rekapitulasi data lengkap ke PDF, Excel, dan Print-Friendly untuk Kepala Unit & Yayasan.
           </p>
         </div>
 

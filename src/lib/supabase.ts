@@ -840,12 +840,42 @@ export async function dbDeleteStudent(studentId: string) {
   }
 }
 
-export async function dbUpdateStudentFaceData(studentId: string, photoUrl: string, accuracyScore: number) {
-  await supabase.from('students').update({
-    has_face_data: true,
-    photo_url: photoUrl,
-    face_accuracy_score: accuracyScore
-  }).eq('id', studentId);
+export async function dbUpdateStudentFaceData(
+  studentId: string, 
+  photoUrl: string, 
+  accuracyScore: number = 99.8,
+  anglePhotos?: Record<string, string | undefined>,
+  capturedAnglesCount: number = 5
+) {
+  try {
+    // 1. Update students table
+    await supabase.from('students').update({
+      has_face_data: true,
+      photo_url: photoUrl,
+      face_accuracy_score: accuracyScore
+    }).eq('id', studentId);
+
+    // Get student details for face_profiles
+    const { data: studentData } = await supabase.from('students').select('name, nis').eq('id', studentId).single();
+
+    // 2. Upsert into face_profiles table
+    const profileId = `fp-${studentId}`;
+    await supabase.from('face_profiles').upsert({
+      id: profileId,
+      student_id: studentId,
+      student_name: studentData?.name || 'Siswa',
+      nis: studentData?.nis || '-',
+      registered_at: new Date().toISOString().split('T')[0],
+      photo_url: photoUrl,
+      confidence_threshold: accuracyScore,
+      sample_count: capturedAnglesCount,
+      status: 'Registered',
+      multi_angle_vectors: anglePhotos ? JSON.stringify(anglePhotos) : null,
+      vector_data: anglePhotos ? JSON.stringify(anglePhotos) : JSON.stringify({ primary: photoUrl })
+    }, { onConflict: 'student_id' });
+  } catch (err) {
+    console.error('Error in dbUpdateStudentFaceData:', err);
+  }
 }
 
 export async function dbResetStudentFaceData(studentId: string) {

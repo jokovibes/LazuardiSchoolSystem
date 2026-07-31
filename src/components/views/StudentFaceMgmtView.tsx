@@ -34,7 +34,13 @@ interface StudentFaceMgmtViewProps {
   onAddStudent: (student: Omit<Student, 'id'>) => void;
   onEditStudent: (student: Student) => void;
   onDeleteStudent: (studentId: string) => void;
-  onRegisterFace: (studentId: string, photoUrl: string, accuracyScore?: number) => void;
+  onRegisterFace: (
+    studentId: string, 
+    photoUrl: string, 
+    accuracyScore?: number, 
+    anglePhotos?: Record<string, string | undefined>, 
+    capturedAnglesCount?: number
+  ) => void;
   onDeleteFaceData: (studentId: string) => void;
 }
 
@@ -292,7 +298,7 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
 
     const totalAccuracy = calculateAccuracyScore();
 
-    onRegisterFace(selectedStudentForFace.id, primaryPhoto, totalAccuracy);
+    onRegisterFace(selectedStudentForFace.id, primaryPhoto, totalAccuracy, anglePhotos, count);
     closeFaceRegistrationModal();
 
     alert(`✅ Dataset Vektor Wajah Multi-Sudut (${count}/5 Sudut) untuk ${selectedStudentForFace.name} berhasil disimpan ke Database AI Supabase dengan Tingkat Akurasi ${totalAccuracy}%!`);

@@ -85,12 +85,15 @@ CREATE TABLE \`students\` (
   INDEX \`idx_student_name\` (\`name\`)
 ) ENGINE=InnoDB;
 
--- 5. FACE_PROFILES TABLE (AI Face Recognition Dataset)
+-- 5. FACE_PROFILES TABLE (AI Face Recognition Dataset Multi-Sudut)
 CREATE TABLE \`face_profiles\` (
   \`id\` VARCHAR(36) NOT NULL PRIMARY KEY,
   \`student_id\` VARCHAR(36) NOT NULL UNIQUE,
   \`confidence_threshold\` DECIMAL(5,2) DEFAULT 85.00,
-  \`vector_data\` JSON NOT NULL, -- 128-dimensional float array
+  \`face_accuracy_score\` DECIMAL(5,2) DEFAULT 98.50,
+  \`captured_angles_count\` INT DEFAULT 5, -- Jumlah sudut (Depan, Kiri, Kanan, Menunduk, Senyum)
+  \`vector_data\` JSON NOT NULL, -- Primary 128-dimensional float vector array
+  \`multi_angle_vectors\` JSON, -- Multi-angle descriptor embeddings (front, left, right, down, smile)
   \`registered_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (\`student_id\`) REFERENCES \`students\`(\`id\`) ON DELETE CASCADE
 ) ENGINE=InnoDB;

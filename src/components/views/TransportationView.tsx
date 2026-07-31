@@ -137,7 +137,7 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
             Pencatatan Kepulangan & Moda Transportasi
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Pencatatan Face Recognition saat penjemputan siswa, driver kendaraan online (Gojek/Grab), penjemputan oragan tua, bus, dan jalan kaki.
+            Pencatatan Face Recognition saat penjemputan siswa, driver kendaraan online (Gojek/Grab), penjemputan orang tua, bus, dan jalan kaki.
           </p>
         </div>
 

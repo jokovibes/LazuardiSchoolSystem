@@ -197,7 +197,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             Pengaturan Sistem & Struktur Sekolah
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Konfigurasi database Supabase Cloud, jam operasional presensi, sensitivitas AI, dan manajemen unit/kelas.
+            Konfigurasi database Cloud, jam operasional presensi, sensitivitas AI, dan manajemen unit/kelas.
           </p>
         </div>
 
@@ -364,7 +364,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <Building className="w-5 h-5 text-amber-500" />
                   Daftar Unit Sekolah (TK / SD / SMP / SMA)
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Seluruh perubahan unit otomatis disinkronkan ke Supabase table 'units'.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Seluruh perubahan unit otomatis disinkronkan ke Database.</p>
               </div>
 
               <button
@@ -493,7 +493,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <GraduationCap className="w-5 h-5 text-indigo-600" />
                   Daftar Kelas Siswa
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">Kelola nama kelas dan wali kelas yang terhubung dengan database Supabase 'classes'.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Kelola nama kelas dan wali kelas yang terhubung dengan database.</p>
               </div>
 
               <div className="flex items-center gap-2">

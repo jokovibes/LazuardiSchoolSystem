@@ -193,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-white/10 bg-[#162B68] flex items-center justify-between text-left">
           <div>
-            <p className="text-[10px] text-blue-200/80 font-bold uppercase tracking-wider">Lazuardi System v2.4</p>
+            <p className="text-[10px] text-blue-200/80 font-bold uppercase tracking-wider">Lazuardi System v1.1</p>
             <p className="text-[9px] text-blue-300/50 mt-0.5">Monitoring Presensi & Movement</p>
           </div>
           <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="System Connected" />
