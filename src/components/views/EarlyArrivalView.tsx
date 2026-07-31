@@ -42,7 +42,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [arrivalTime, setArrivalTime] = useState<string>('06:00');
-  const [assemblyLocation, setAssemblyLocation] = useState<string>('Perpustakaan Lt. 2');
+  const [assemblyLocation, setAssemblyLocation] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
   // Filters
@@ -50,15 +50,6 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
   const [filterClass, setFilterClass] = useState<string>('ALL');
   const [filterPeriod, setFilterPeriod] = useState<'Hari' | 'Minggu' | 'Bulan'>('Hari');
   const [searchQuery, setSearchQuery] = useState<string>('');
-
-  const locations = [
-    'Perpustakaan Lt. 2',
-    'Lobi Utama Sekolah',
-    'Selasar Gazebo',
-    'Lapangan Basket',
-    'Kantin Utama',
-    'Ruang Piket OSIS'
-  ];
 
   const handleSelectFromScanner = (student: Student, confidence: number) => {
     setSelectedStudent(student);
@@ -225,15 +216,13 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
               </label>
               <div className="relative">
                 <MapPin className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                <select
+                <input
+                  type="text"
                   value={assemblyLocation}
                   onChange={(e) => setAssemblyLocation(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  {locations.map(loc => (
-                    <option key={loc} value={loc}>{loc}</option>
-                  ))}
-                </select>
+                  placeholder="Masukkan lokasi berkumpul (mis: Perpustakaan, Lobi, dll)"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 

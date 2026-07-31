@@ -46,8 +46,8 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [exitTime, setExitTime] = useState<string>('10:30');
   const [expectedReturnTime, setExpectedReturnTime] = useState<string>('12:00');
-  const [purpose, setPurpose] = useState<string>('Pemeriksaan kesehatan / berobat di klinik');
-  const [pickupBy, setPickupBy] = useState<string>('Orang Tua (Ibu)');
+  const [purpose, setPurpose] = useState<string>('');
+  const [pickupBy, setPickupBy] = useState<string>('');
   const [permitLetterUrl, setPermitLetterUrl] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 

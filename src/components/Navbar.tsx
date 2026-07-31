@@ -192,16 +192,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 border border-white/20 px-3 py-1.5 rounded-xl transition-all"
               >
                 <img
-                  src={currentUser.avatarUrl}
-                  alt={currentUser.name}
+                  src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
+                  alt={currentUser?.name || 'User'}
                   className="w-7 h-7 rounded-full object-cover ring-2 ring-blue-400/50"
                 />
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-semibold text-white leading-tight max-w-[130px] truncate">
-                    {currentUser.name}
+                    {currentUser?.name || 'User'}
                   </p>
-                  <span className={`inline-block text-[10px] font-bold px-1.5 py-0.2 rounded border ${getRoleBadgeStyle(currentUser.role)}`}>
-                    {currentUser.role}
+                  <span className={`inline-block text-[10px] font-bold px-1.5 py-0.2 rounded border ${getRoleBadgeStyle(currentUser?.role || 'Super Admin')}`}>
+                    {currentUser?.role || 'Super Admin'}
                   </span>
                 </div>
                 <ChevronDown className="w-4 h-4 text-blue-200" />
@@ -212,15 +212,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 text-slate-800 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                   <div className="p-3.5 bg-slate-100 border-b border-slate-200 flex items-center gap-3">
                     <img
-                      src={currentUser.avatarUrl}
-                      alt={currentUser.name}
+                      src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
+                      alt={currentUser?.name || 'User'}
                       className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-xs"
                     />
                     <div className="overflow-hidden">
-                      <p className="text-xs font-bold text-slate-800 truncate">{currentUser.name}</p>
-                      <p className="text-[10px] text-slate-500 truncate">{currentUser.email || currentUser.username}</p>
-                      <span className={`inline-block text-[9px] font-bold px-1.5 py-0.2 mt-1 rounded border ${getRoleBadgeStyle(currentUser.role)}`}>
-                        {currentUser.role}
+                      <p className="text-xs font-bold text-slate-800 truncate">{currentUser?.name || 'User'}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{currentUser?.email || currentUser?.username || ''}</p>
+                      <span className={`inline-block text-[9px] font-bold px-1.5 py-0.2 mt-1 rounded border ${getRoleBadgeStyle(currentUser?.role || 'Super Admin')}`}>
+                        {currentUser?.role || 'Super Admin'}
                       </span>
                     </div>
                   </div>

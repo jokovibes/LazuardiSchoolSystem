@@ -42,8 +42,8 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [dismissalTime, setDismissalTime] = useState<string>('15:15');
   const [transportMode, setTransportMode] = useState<TransportMode>('Kendaraan Online');
-  const [driverName, setDriverName] = useState<string>('Budi (Driver Gojek)');
-  const [vehiclePlate, setVehiclePlate] = useState<string>('B 1234 ABC');
+  const [driverName, setDriverName] = useState<string>('');
+  const [vehiclePlate, setVehiclePlate] = useState<string>('');
 
   // Filters
   const [filterUnit, setFilterUnit] = useState<string>('ALL');

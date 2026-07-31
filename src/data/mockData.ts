@@ -17,18 +17,18 @@ export const initialUnits: SchoolUnit[] = [];
 
 export const initialClasses: StudentClass[] = [];
 
-export const initialUsers: User[] = [
-  {
-    id: 'usr-1',
-    name: 'Super Admin Lazuardi',
-    username: 'admin',
-    email: 'it@lazuardi.sch.id',
-    password: '@lazuardi123',
-    role: 'Super Admin',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
-    status: 'Active'
-  }
-];
+export const DEFAULT_FALLBACK_USER: User = {
+  id: 'usr-1',
+  name: 'Super Admin Lazuardi',
+  username: 'admin',
+  email: 'admin@lazuardi.sch.id',
+  password: '@lazuardi123',
+  role: 'Super Admin',
+  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+  status: 'Active'
+};
+
+export const initialUsers: User[] = [DEFAULT_FALLBACK_USER];
 
 export const initialStudents: Student[] = [];
 

@@ -8,6 +8,7 @@ import {
   initialUnits, 
   initialClasses, 
   initialUsers, 
+  DEFAULT_FALLBACK_USER,
   initialStudents, 
   initialEarlyArrivals, 
   initialLateArrivals, 
@@ -96,7 +97,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User>(() => {
     const savedUserId = sessionStorage.getItem('lazuardi_auth_user_id');
     const matched = initialUsers.find(u => u.id === savedUserId);
-    return matched || initialUsers[0];
+    return matched || initialUsers[0] || DEFAULT_FALLBACK_USER;
   });
   const [users, setUsers] = useState<User[]>(initialUsers);
   
@@ -227,8 +228,8 @@ export default function App() {
     const newLog: AuditLog = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      userName: currentUser.name,
-      userRole: currentUser.role,
+      userName: currentUser?.name || 'Sistem',
+      userRole: currentUser?.role || 'Super Admin',
       action,
       module,
       details,
@@ -533,7 +534,7 @@ export default function App() {
     setIsLoggedIn(false);
     sessionStorage.removeItem('lazuardi_auth_logged_in');
     sessionStorage.removeItem('lazuardi_auth_user_id');
-    addAuditLog('Logout Sistem', 'Autentikasi', `Pengguna ${currentUser.name} keluar dari sistem`);
+    addAuditLog('Logout Sistem', 'Autentikasi', `Pengguna ${currentUser?.name || 'User'} keluar dari sistem`);
   };
 
   if (!isLoggedIn) {

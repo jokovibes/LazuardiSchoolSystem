@@ -41,7 +41,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [arrivalTime, setArrivalTime] = useState<string>('07:25');
-  const [lateReason, setLateReason] = useState<string>('Ban bocor di perempatan Fatmawati');
+  const [lateReason, setLateReason] = useState<string>('');
   const [photoProofUrl, setPhotoProofUrl] = useState<string>('');
 
   // Filters
