@@ -78,6 +78,13 @@ CREATE TABLE \`students\` (
   \`address\` TEXT,
   \`photo_url\` TEXT,
   \`has_face_data\` TINYINT(1) DEFAULT 0,
+  \`face_accuracy_score\` DECIMAL(5,2) DEFAULT 0.00,
+  \`photo_angle_front\` TEXT,
+  \`photo_angle_left\` TEXT,
+  \`photo_angle_right\` TEXT,
+  \`photo_angle_down\` TEXT,
+  \`photo_angle_smile\` TEXT,
+  \`angles_json\` JSONB,
   \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (\`unit_id\`) REFERENCES \`units\`(\`id\`),
   FOREIGN KEY (\`class_id\`) REFERENCES \`classes\`(\`id\`),
@@ -92,8 +99,14 @@ CREATE TABLE \`face_profiles\` (
   \`confidence_threshold\` DECIMAL(5,2) DEFAULT 85.00,
   \`face_accuracy_score\` DECIMAL(5,2) DEFAULT 98.50,
   \`captured_angles_count\` INT DEFAULT 5, -- Jumlah sudut (Depan, Kiri, Kanan, Menunduk, Senyum)
+  \`photo_angle_front\` TEXT,
+  \`photo_angle_left\` TEXT,
+  \`photo_angle_right\` TEXT,
+  \`photo_angle_down\` TEXT,
+  \`photo_angle_smile\` TEXT,
+  \`angles_json\` JSONB,
   \`vector_data\` JSON NOT NULL, -- Primary 128-dimensional float vector array
-  \`multi_angle_vectors\` JSON, -- Multi-angle descriptor embeddings (front, left, right, down, smile)
+  \`multi_angle_vectors\` JSON, -- Multi-angle descriptor embeddings
   \`registered_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (\`student_id\`) REFERENCES \`students\`(\`id\`) ON DELETE CASCADE
 ) ENGINE=InnoDB;

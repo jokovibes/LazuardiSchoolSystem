@@ -848,17 +848,30 @@ export async function dbUpdateStudentFaceData(
   capturedAnglesCount: number = 5
 ) {
   try {
-    // 1. Update students table
+    const photo_angle_front = anglePhotos?.front || photoUrl || null;
+    const photo_angle_left = anglePhotos?.left || null;
+    const photo_angle_right = anglePhotos?.right || null;
+    const photo_angle_down = anglePhotos?.down || null;
+    const photo_angle_smile = anglePhotos?.smile || null;
+    const angles_json = anglePhotos || { front: photoUrl };
+
+    // 1. Update students table with photo_url, face_accuracy_score, 5 angle columns, and angles_json
     await supabase.from('students').update({
       has_face_data: true,
       photo_url: photoUrl,
-      face_accuracy_score: accuracyScore
+      face_accuracy_score: accuracyScore,
+      photo_angle_front,
+      photo_angle_left,
+      photo_angle_right,
+      photo_angle_down,
+      photo_angle_smile,
+      angles_json
     }).eq('id', studentId);
 
     // Get student details for face_profiles
     const { data: studentData } = await supabase.from('students').select('name, nis').eq('id', studentId).single();
 
-    // 2. Upsert into face_profiles table
+    // 2. Upsert into face_profiles table with 5 angle columns & angles_json
     const profileId = `fp-${studentId}`;
     await supabase.from('face_profiles').upsert({
       id: profileId,
@@ -870,8 +883,14 @@ export async function dbUpdateStudentFaceData(
       confidence_threshold: accuracyScore,
       sample_count: capturedAnglesCount,
       status: 'Registered',
-      multi_angle_vectors: anglePhotos ? JSON.stringify(anglePhotos) : null,
-      vector_data: anglePhotos ? JSON.stringify(anglePhotos) : JSON.stringify({ primary: photoUrl })
+      photo_angle_front,
+      photo_angle_left,
+      photo_angle_right,
+      photo_angle_down,
+      photo_angle_smile,
+      angles_json,
+      multi_angle_vectors: JSON.stringify(angles_json),
+      vector_data: JSON.stringify(angles_json)
     }, { onConflict: 'student_id' });
   } catch (err) {
     console.error('Error in dbUpdateStudentFaceData:', err);
@@ -879,11 +898,22 @@ export async function dbUpdateStudentFaceData(
 }
 
 export async function dbResetStudentFaceData(studentId: string) {
-  await supabase.from('students').update({
-    has_face_data: false,
-    face_accuracy_score: 0
-  }).eq('id', studentId);
-  await supabase.from('face_profiles').delete().eq('student_id', studentId);
+  try {
+    await supabase.from('students').update({
+      has_face_data: false,
+      face_accuracy_score: 0,
+      photo_angle_front: null,
+      photo_angle_left: null,
+      photo_angle_right: null,
+      photo_angle_down: null,
+      photo_angle_smile: null,
+      angles_json: null
+    }).eq('id', studentId);
+
+    await supabase.from('face_profiles').delete().eq('student_id', studentId);
+  } catch (err) {
+    console.error('Error in dbResetStudentFaceData:', err);
+  }
 }
 
 export async function dbInsertUser(user: User) {
