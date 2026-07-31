@@ -94,7 +94,7 @@ export default function App() {
   // Global State
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const savedUserId = localStorage.getItem('lazuardi_auth_user_id');
+    const savedUserId = sessionStorage.getItem('lazuardi_auth_user_id');
     const matched = initialUsers.find(u => u.id === savedUserId);
     return matched || initialUsers[0];
   });
@@ -155,6 +155,15 @@ export default function App() {
             return u;
           });
           setUsers(sanitizedUsers);
+
+          // Sync active session user with loaded Supabase user record
+          const savedUserId = sessionStorage.getItem('lazuardi_auth_user_id');
+          if (savedUserId) {
+            const activeUser = sanitizedUsers.find(u => u.id === savedUserId);
+            if (activeUser) {
+              setCurrentUser(activeUser);
+            }
+          }
         }
 
         // If Supabase returned rows
@@ -516,15 +525,14 @@ export default function App() {
     setCurrentUser(user);
     setIsLoggedIn(true);
     sessionStorage.setItem('lazuardi_auth_logged_in', 'true');
-    localStorage.setItem('lazuardi_auth_logged_in', 'true');
-    localStorage.setItem('lazuardi_auth_user_id', user.id);
+    sessionStorage.setItem('lazuardi_auth_user_id', user.id);
     addAuditLog('Login Sistem', 'Autentikasi', `Pengguna ${user.name} (${user.role}) berhasil masuk ke sistem`);
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
     sessionStorage.removeItem('lazuardi_auth_logged_in');
-    localStorage.removeItem('lazuardi_auth_logged_in');
+    sessionStorage.removeItem('lazuardi_auth_user_id');
     addAuditLog('Logout Sistem', 'Autentikasi', `Pengguna ${currentUser.name} keluar dari sistem`);
   };
 

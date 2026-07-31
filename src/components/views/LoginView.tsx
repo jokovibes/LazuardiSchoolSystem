@@ -44,55 +44,36 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      // Find matching user by username or email
+      const trimmedIdentifier = identifier.trim().toLowerCase();
+      const trimmedPassword = password.trim();
+
+      // Find matching user by username or email from Supabase users list
       const matched = availableUsers.find(
-        u => u.username.toLowerCase() === identifier.trim().toLowerCase() ||
-             u.email.toLowerCase() === identifier.trim().toLowerCase()
+        u => (u.username && u.username.toLowerCase() === trimmedIdentifier) ||
+             (u.email && u.email.toLowerCase() === trimmedIdentifier)
       );
 
-      if (matched) {
-        if (matched.status === 'Inactive') {
-          setErrorMsg('Akun pengguna ini nonaktif. Silakan hubungi Administrator.');
-          setIsLoading(false);
-          return;
-        }
-
-        const expectedPassword = matched.password || 'lazuardi123';
-        if (password.trim() !== expectedPassword && password.trim() !== 'lazuardi123') {
-          setErrorMsg('Kata sandi (password) tidak cocok. Silakan periksa kembali.');
-          setIsLoading(false);
-          return;
-        }
-
+      if (!matched) {
+        setErrorMsg('Username/Email atau Password tidak ditemukan pada database.');
         setIsLoading(false);
-        onLoginSuccess(matched);
-      } else {
-        // Fallback demo: if user types anything valid or uses default admin
-        if (identifier.trim().length > 0) {
-          const defaultUser = availableUsers[0] || {
-            id: 'usr-1',
-            name: identifier,
-            username: identifier,
-            email: `${identifier}@lazuardi.sch.id`,
-            role: 'Super Admin',
-            avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-            status: 'Active'
-          };
-          setIsLoading(false);
-          onLoginSuccess(defaultUser);
-        } else {
-          setErrorMsg('Username atau password tidak ditemukan.');
-          setIsLoading(false);
-        }
+        return;
       }
-    }, 400);
-  };
 
-  const handleQuickDemoLogin = (user: User) => {
-    setIdentifier(user.username);
-    setPassword('lazuardi123');
-    setErrorMsg('');
-    onLoginSuccess(user);
+      if (matched.status === 'Inactive') {
+        setErrorMsg('Akun pengguna ini nonaktif. Silakan hubungi Administrator.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!matched.password || trimmedPassword !== matched.password) {
+        setErrorMsg('Kata sandi (password) salah. Silakan periksa kembali.');
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(false);
+      onLoginSuccess(matched);
+    }, 300);
   };
 
   const getRoleBadgeColor = (role: RoleType) => {

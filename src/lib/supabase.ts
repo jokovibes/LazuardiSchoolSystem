@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   name TEXT NOT NULL,
   username TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
-  password TEXT DEFAULT 'lazuardi123',
+  password TEXT NOT NULL,
   role TEXT NOT NULL,
   unit_id TEXT,
   assigned_class TEXT,
@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 
 -- Migration for existing database table
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password TEXT DEFAULT 'lazuardi123';
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password TEXT;
 
 -- 4. STUDENTS TABLE
 CREATE TABLE IF NOT EXISTS public.students (
@@ -238,13 +238,13 @@ INSERT INTO public.classes (id, unit_id, name, homeroom_teacher, total_students)
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. USERS SEED DATA
-INSERT INTO public.users (id, name, username, email, role, unit_id, assigned_class, avatar_url, status) VALUES
-('usr-1', 'Super Admin Lazuardi', 'admin', 'admin@lazuardi.sch.id', 'Super Admin', NULL, NULL, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250', 'Active'),
-('usr-2', 'Siti Aminah, S.Kom', 'admin_data', 'siti.admin@lazuardi.sch.id', 'Admin', NULL, NULL, 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250', 'Active'),
-('usr-3', 'Pak Pakus (Pos Gerbang Utama)', 'security', 'security.pos1@lazuardi.sch.id', 'Security', NULL, NULL, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250', 'Active'),
-('usr-4', 'Dian Permata, M.Pd (Wali Kelas)', 'guru_dian', 'dian.guru@lazuardi.sch.id', 'Guru', 'unit-3', 'SMA 10-IPA-1', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=250', 'Active'),
-('usr-5', 'Bambang Supriyadi, M.M (Kepala Unit)', 'kepala_sma', 'bambang.kepala@lazuardi.sch.id', 'Kepala Unit', 'unit-3', NULL, 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250', 'Active'),
-('usr-6', 'Dr. Hj. Ratna Sari (Manajemen Yayasan)', 'manajemen', 'ratna.yayasan@lazuardi.sch.id', 'Manajemen', NULL, NULL, 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=250', 'Active')
+INSERT INTO public.users (id, name, username, email, password, role, unit_id, assigned_class, avatar_url, status) VALUES
+('usr-1', 'Super Admin Lazuardi', 'admin', 'admin@lazuardi.sch.id', '@lazuardi123', 'Super Admin', NULL, NULL, 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250', 'Active'),
+('usr-2', 'Siti Aminah, S.Kom', 'admin_data', 'siti.admin@lazuardi.sch.id', '@lazuardi123', 'Admin', NULL, NULL, 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=250', 'Active'),
+('usr-3', 'Pak Pakus (Pos Gerbang Utama)', 'security', 'security.pos1@lazuardi.sch.id', '@lazuardi123', 'Security', NULL, NULL, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250', 'Active'),
+('usr-4', 'Dian Permata, M.Pd (Wali Kelas)', 'guru_dian', 'dian.guru@lazuardi.sch.id', '@lazuardi123', 'Guru', 'unit-3', 'SMA 10-IPA-1', 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=250', 'Active'),
+('usr-5', 'Bambang Supriyadi, M.M (Kepala Unit)', 'kepala_sma', 'bambang.kepala@lazuardi.sch.id', '@lazuardi123', 'Kepala Unit', 'unit-3', NULL, 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=250', 'Active'),
+('usr-6', 'Dr. Hj. Ratna Sari (Manajemen Yayasan)', 'manajemen', 'ratna.yayasan@lazuardi.sch.id', '@lazuardi123', 'Manajemen', NULL, NULL, 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=250', 'Active')
 ON CONFLICT (id) DO NOTHING;
 
 -- 4. STUDENTS SEED DATA
@@ -341,7 +341,7 @@ export async function fetchAllDataFromSupabase() {
       name: usr.name,
       username: usr.username,
       email: usr.email,
-      password: usr.password || 'lazuardi123',
+      password: usr.password || '',
       role: usr.role,
       unitId: usr.unit_id,
       assignedClass: usr.assigned_class,
@@ -525,6 +525,7 @@ export async function seedInitialDataToSupabase(
       name: usr.name,
       username: usr.username,
       email: usr.email,
+      password: usr.password || '',
       role: usr.role,
       unit_id: usr.unitId,
       assigned_class: usr.assignedClass,
@@ -862,7 +863,7 @@ export async function dbInsertUser(user: User) {
       name: user.name,
       username: user.username,
       email: user.email,
-      password: user.password || 'lazuardi123',
+      password: user.password || '',
       role: user.role,
       unit_id: user.unitId || null,
       assigned_class: user.assignedClass || null,
@@ -887,7 +888,7 @@ export async function dbUpdateUser(user: User) {
       name: user.name,
       username: user.username,
       email: user.email,
-      password: user.password || 'lazuardi123',
+      password: user.password || '',
       role: user.role,
       unit_id: user.unitId || null,
       assigned_class: user.assignedClass || null,

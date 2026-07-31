@@ -62,7 +62,7 @@ export const UserRoleMgmtView: React.FC<UserRoleMgmtViewProps> = ({
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('lazuardi123');
+  const [password, setPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [role, setRole] = useState<RoleType>('Security');
   const [avatarUrl, setAvatarUrl] = useState(PRESET_AVATARS[0]);
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   name TEXT NOT NULL,
   username TEXT NOT NULL UNIQUE,
   email TEXT NOT NULL UNIQUE,
-  password TEXT DEFAULT 'lazuardi123',
+  password TEXT NOT NULL,
   role TEXT NOT NULL,
   unit_id TEXT,
   assigned_class TEXT,
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 
 -- 2. Jika tabel 'users' sudah ada, tambahkan kolom password & avatar_url:
-ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password TEXT DEFAULT 'lazuardi123';
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS password TEXT;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
     navigator.clipboard.writeText(sqlText);
     setCopiedSql(true);
@@ -177,7 +177,7 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
     setEditName(u.name);
     setEditUsername(u.username);
     setEditEmail(u.email);
-    setEditPassword(u.password || 'lazuardi123');
+    setEditPassword(u.password || '');
     setShowEditPassword(false);
     setEditRole(u.role);
     setEditUnitId(u.unitId || '');
@@ -194,7 +194,7 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
       name: editName,
       username: editUsername,
       email: editEmail,
-      password: editPassword || 'lazuardi123',
+      password: editPassword,
       role: editRole,
       unitId: editUnitId || undefined,
       assignedClass: editAssignedClass || undefined,
@@ -261,7 +261,7 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
       name,
       username,
       email,
-      password: password || 'lazuardi123',
+      password: password,
       role,
       avatarUrl: avatarUrl || PRESET_AVATARS[0],
       status: 'Active'
@@ -269,7 +269,7 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
     setName('');
     setUsername('');
     setEmail('');
-    setPassword('lazuardi123');
+    setPassword('');
     setAvatarUrl(PRESET_AVATARS[0]);
     setShowNewPassword(false);
     setIsAddingUser(false);
@@ -388,7 +388,7 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
                   type={showNewPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="lazuardi123"
+                  placeholder="Masukkan password baru"
                   className="w-full px-3 py-2 pr-9 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono"
                   required
                 />
@@ -689,7 +689,7 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
                       <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200 w-fit">
                         <Key className="w-3 h-3 text-slate-400" />
                         <span className="text-slate-800">
-                          {visiblePasswordUserIds[u.id] ? (u.password || 'lazuardi123') : '••••••••'}
+                          {visiblePasswordUserIds[u.id] ? (u.password || '••••••••') : '••••••••'}
                         </span>
                         <button
                           type="button"
