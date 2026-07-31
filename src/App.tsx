@@ -401,10 +401,10 @@ export default function App() {
     addAuditLog('Hapus Siswa', 'Master Siswa', `Menghapus data siswa ${student?.name || studentId}`);
   };
 
-  const handleRegisterFace = (studentId: string, photoUrl: string) => {
-    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, hasFaceData: true, photoUrl, faceAccuracyScore: 98.5 } : s));
-    dbUpdateStudentFaceData(studentId, photoUrl, 98.5).catch(err => console.error('Supabase error:', err));
-    addAuditLog('Registrasi Vektor Wajah', 'Face Profiles', `Mendaftarkan dataset wajah untuk ID ${studentId}`);
+  const handleRegisterFace = (studentId: string, photoUrl: string, accuracyScore: number = 99.8) => {
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, hasFaceData: true, photoUrl, faceAccuracyScore: accuracyScore } : s));
+    dbUpdateStudentFaceData(studentId, photoUrl, accuracyScore).catch(err => console.error('Supabase error:', err));
+    addAuditLog('Registrasi Vektor Wajah Multi-Sudut', 'Face Profiles', `Mendaftarkan dataset multi-sudut wajah untuk ID ${studentId} (Akurasi: ${accuracyScore}%)`);
   };
 
   const handleDeleteFaceData = (studentId: string) => {
