@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sunrise, 
   Clock, 
@@ -67,8 +67,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [selectedUnit, setSelectedUnit] = useState<string>('ALL');
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
-  const [selectedDate, setSelectedDate] = useState<string>('2026-07-28');
+
+  const getTodayString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getLatestDate = () => {
+    const today = getTodayString();
+    const allDates: string[] = [];
+
+    earlyArrivals.forEach(r => r.date && allDates.push(r.date));
+    lateArrivals.forEach(r => r.date && allDates.push(r.date));
+    exitPermissions.forEach(r => r.date && allDates.push(r.date));
+    transportRecords.forEach(r => r.date && allDates.push(r.date));
+
+    if (allDates.length === 0) return today;
+
+    allDates.sort((a, b) => b.localeCompare(a));
+    const latestInDb = allDates[0];
+
+    return latestInDb > today ? latestInDb : (allDates.includes(today) ? today : latestInDb);
+  };
+
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    const latest = getLatestDate();
+    if (latest) {
+      setSelectedDate(latest);
+    }
+  }, [earlyArrivals, lateArrivals, exitPermissions, transportRecords]);
 
   // Filtering records by unit, class, and date
   const filteredEarly = earlyArrivals.filter(r => 
@@ -302,6 +335,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer"
             />
           </div>
+
+          <button
+            onClick={() => setSelectedDate(getLatestDate())}
+            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1"
+            title="Tampilkan Data Tanggal Terbaru"
+          >
+            Terbaru
+          </button>
 
           {/* Export & Share Action Buttons */}
           <div className="flex items-center gap-2">
@@ -606,10 +647,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-xs text-slate-500 mb-3">Siswa yang terdata terlambat pada hari ini:</p>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {lateArrivals.length === 0 ? (
-                <p className="text-center py-6 text-xs text-slate-400">Belum ada catatan keterlambatan untuk tanggal ini.</p>
+              {filteredLate.length === 0 ? (
+                <p className="text-center py-6 text-xs text-slate-400">Belum ada catatan keterlambatan untuk tanggal ini ({selectedDate}).</p>
               ) : (
-                lateArrivals.map(item => (
+                filteredLate.map(item => (
                   <div key={item.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 font-bold flex items-center justify-center text-xs">
