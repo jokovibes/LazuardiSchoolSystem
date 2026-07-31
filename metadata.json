@@ -1,0 +1,10 @@
+{
+  "name": "Lazuardi School System",
+  "description": "Sistem Presensi, Keterlambatan, Izin Keluar, Kedatangan Dini, dan Moda Transportasi Siswa Sekolah berbasis Face Recognition \u0026 RBAC",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
