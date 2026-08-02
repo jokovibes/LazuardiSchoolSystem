@@ -79,6 +79,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     handleTestDbConnection();
   }, []);
 
+  useEffect(() => {
+    setFormData(settings);
+  }, [settings]);
+
   const handleTestDbConnection = async () => {
     setDbStatus({ testing: true });
     const res = await testSupabaseConnection();

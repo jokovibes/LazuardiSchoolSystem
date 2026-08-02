@@ -145,7 +145,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             <span>Tahun Ajaran 2026/2027</span>
             <div className="flex items-center gap-1 font-mono">
               <Database className="w-3.5 h-3.5 text-emerald-400" />
-              <span>v2.4 Live</span>
+              <span>v1.1 Live</span>
             </div>
           </div>
         </div>

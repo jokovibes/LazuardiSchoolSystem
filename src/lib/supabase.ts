@@ -220,6 +220,22 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   ip_address TEXT NOT NULL
 );
 
+-- 12. SYSTEM_SETTINGS TABLE
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default_settings',
+  school_name TEXT,
+  academic_year TEXT,
+  early_arrival_cutoff TEXT,
+  normal_arrival_cutoff TEXT,
+  late_arrival_cutoff TEXT,
+  face_confidence_threshold NUMERIC(5,2),
+  enable_whatsapp_api BOOLEAN,
+  wa_api_key TEXT,
+  wa_phone_sender TEXT,
+  enable_email_alerts BOOLEAN,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Disable Row Level Security for demo tables or Enable public read/write
 ALTER TABLE public.units DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.classes DISABLE ROW LEVEL SECURITY;
@@ -232,6 +248,7 @@ ALTER TABLE public.exit_permissions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transport_records DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.system_settings DISABLE ROW LEVEL SECURITY;
 
 -- =================================================================
 -- SEED DATA INSERTS
@@ -317,7 +334,8 @@ export async function fetchAllDataFromSupabase() {
       exitPermissionsRes,
       transportRecordsRes,
       notificationsRes,
-      auditLogsRes
+      auditLogsRes,
+      systemSettingsRes
     ] = await Promise.all([
       supabase.from('units').select('*'),
       supabase.from('classes').select('*'),
@@ -329,7 +347,8 @@ export async function fetchAllDataFromSupabase() {
       supabase.from('exit_permissions').select('*').order('created_at', { ascending: false }),
       supabase.from('transport_records').select('*').order('created_at', { ascending: false }),
       supabase.from('notifications').select('*'),
-      supabase.from('audit_logs').select('*').order('timestamp', { ascending: false })
+      supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }),
+      supabase.from('system_settings').select('*').limit(1)
     ]);
 
     // Check if any major table error occurred (e.g. table not created)
@@ -485,6 +504,25 @@ export async function fetchAllDataFromSupabase() {
       ipAddress: al.ip_address
     }));
 
+    let settings: SystemSetting | null = null;
+    if (systemSettingsRes && systemSettingsRes.data && systemSettingsRes.data.length > 0) {
+      const s = systemSettingsRes.data[0];
+      if (s) {
+        settings = {
+          schoolName: s.school_name || 'Lazuardi Global Compassionate School',
+          academicYear: s.academic_year || '2026/2027 - Semester Ganjil',
+          earlyArrivalCutoff: s.early_arrival_cutoff || '06:15',
+          normalArrivalCutoff: s.normal_arrival_cutoff || '07:00',
+          lateArrivalCutoff: s.late_arrival_cutoff || '07:15',
+          faceConfidenceThreshold: Number(s.face_confidence_threshold ?? 85),
+          enableWhatsAppApi: Boolean(s.enable_whatsapp_api),
+          waApiKey: s.wa_api_key || '',
+          waPhoneSender: s.wa_phone_sender || '',
+          enableEmailAlerts: Boolean(s.enable_email_alerts)
+        };
+      }
+    }
+
     return {
       units,
       classes,
@@ -496,7 +534,8 @@ export async function fetchAllDataFromSupabase() {
       exitPermissions,
       transportRecords,
       notifications,
-      auditLogs
+      auditLogs,
+      settings
     };
   } catch (err) {
     console.error('Error fetching Supabase data:', err);
@@ -1173,6 +1212,37 @@ export async function dbDeleteClass(classId: string) {
     return { success: true };
   } catch (err: any) {
     console.error('Catch in dbDeleteClass:', err);
+    return { success: false, message: err?.message || String(err) };
+  }
+}
+
+// System Settings CRUD
+export async function dbSaveSettings(s: SystemSetting) {
+  try {
+    // Save to localStorage immediately
+    localStorage.setItem('lazuardi_system_settings', JSON.stringify(s));
+
+    const { error } = await supabase.from('system_settings').upsert({
+      id: 'default_settings',
+      school_name: s.schoolName,
+      academic_year: s.academicYear,
+      early_arrival_cutoff: s.earlyArrivalCutoff,
+      normal_arrival_cutoff: s.normalArrivalCutoff,
+      late_arrival_cutoff: s.lateArrivalCutoff,
+      face_confidence_threshold: s.faceConfidenceThreshold,
+      enable_whatsapp_api: s.enableWhatsAppApi,
+      wa_api_key: s.waApiKey,
+      wa_phone_sender: s.waPhoneSender,
+      enable_email_alerts: s.enableEmailAlerts,
+      updated_at: new Date().toISOString()
+    });
+    if (error) {
+      console.warn('Supabase dbSaveSettings warning (saved to localStorage):', error.message);
+      return { success: false, message: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.warn('Catch in dbSaveSettings (saved to localStorage):', err);
     return { success: false, message: err?.message || String(err) };
   }
 }

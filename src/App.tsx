@@ -83,6 +83,7 @@ import {
   dbInsertClass,
   dbUpdateClass,
   dbDeleteClass,
+  dbSaveSettings,
   testSupabaseConnection
 } from './lib/supabase';
 
@@ -113,7 +114,17 @@ export default function App() {
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(initialAuditLogs);
-  const [settings, setSettings] = useState<SystemSetting>(initialSettings);
+  const [settings, setSettings] = useState<SystemSetting>(() => {
+    const saved = localStorage.getItem('lazuardi_system_settings');
+    if (saved) {
+      try {
+        return { ...initialSettings, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error('Error loading settings from localStorage:', e);
+      }
+    }
+    return initialSettings;
+  });
 
   const [isOpenMobileSidebar, setIsOpenMobileSidebar] = useState(false);
   const [dbStatus, setDbStatus] = useState<{ isConnected: boolean; isSynced: boolean; message: string }>({
@@ -179,6 +190,10 @@ export default function App() {
           setTransportRecords(data.transportRecords);
           setNotifications(data.notifications.length > 0 ? data.notifications : initialNotifications);
           setAuditLogs(data.auditLogs.length > 0 ? data.auditLogs : initialAuditLogs);
+          if (data.settings) {
+            setSettings(data.settings);
+            localStorage.setItem('lazuardi_system_settings', JSON.stringify(data.settings));
+          }
           
           setDbStatus({
             isConnected: true,
@@ -737,7 +752,9 @@ export default function App() {
               settings={settings}
               onSaveSettings={(newSettings) => {
                 setSettings(newSettings);
-                addAuditLog('Update Pengaturan System', 'Pengaturan', 'Memperbarui parameter operasional & jam cutoff');
+                localStorage.setItem('lazuardi_system_settings', JSON.stringify(newSettings));
+                dbSaveSettings(newSettings).catch(err => console.error('Supabase settings save error:', err));
+                addAuditLog('Update Pengaturan System', 'Pengaturan', `Memperbarui parameter operasional & threshold ArcFace (${newSettings.faceConfidenceThreshold}%)`);
               }}
               units={units}
               classes={classes}

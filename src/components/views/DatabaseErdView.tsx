@@ -188,6 +188,22 @@ CREATE TABLE \`audit_logs\` (
   \`ip_address\` VARCHAR(45) NOT NULL,
   \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- 11. SYSTEM_SETTINGS TABLE
+CREATE TABLE \`system_settings\` (
+  \`id\` VARCHAR(50) NOT NULL PRIMARY KEY DEFAULT 'default_settings',
+  \`school_name\` VARCHAR(255),
+  \`academic_year\` VARCHAR(100),
+  \`early_arrival_cutoff\` VARCHAR(10),
+  \`normal_arrival_cutoff\` VARCHAR(10),
+  \`late_arrival_cutoff\` VARCHAR(10),
+  \`face_confidence_threshold\` DECIMAL(5,2) DEFAULT 85.00,
+  \`enable_whatsapp_api\` TINYINT(1) DEFAULT 1,
+  \`wa_api_key\` TEXT,
+  \`wa_phone_sender\` VARCHAR(30),
+  \`enable_email_alerts\` TINYINT(1) DEFAULT 1,
+  \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
 `;
 
   const activeScript = activeTab === 'supabase' ? SUPABASE_POSTGRES_DDL : mysqlDDL;
