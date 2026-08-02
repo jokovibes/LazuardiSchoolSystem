@@ -140,7 +140,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
           className="bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-md shadow-blue-700/20 transition-all cursor-pointer shrink-0"
         >
           <Camera className="w-5 h-5 text-sky-300" />
-          Pindai Wajah / Cari Siswa
+          Pindai Wajah ArcFace AI / Cari Siswa
         </button>
       </div>
 

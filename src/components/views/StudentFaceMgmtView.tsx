@@ -393,12 +393,18 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
       {/* Title Header */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <ScanFace className="w-6 h-6 text-blue-600" />
-            Manajemen Registrasi & Vektor Multi-Sudut Wajah Siswa
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <ScanFace className="w-6 h-6 text-blue-600" />
+              Manajemen Registrasi & Vektor Wajah ArcFace 512-D
+            </h2>
+            <span className="hidden sm:inline-flex bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-bold font-mono px-2.5 py-0.5 rounded-md items-center gap-1 shadow-xs">
+              <Sparkles className="w-3 h-3 text-amber-300" />
+              ArcFace Engine
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-1">
-            Pindai dataset sampel wajah dari <strong>berbagai sisi & sudut</strong> (Depan, Kiri, Kanan, Menunduk, Senyum) untuk akurasi presisi hingga <strong>99.8%</strong>.
+            Ekstraksi matriks 512 elemen vektor fitur wajah ArcFace AI dari <strong>5 sudut bidang</strong> (Depan, Kiri, Kanan, Menunduk, Senyum) untuk presisi pencocokan Cosine Similarity hingga <strong>99.8%</strong>.
           </p>
         </div>
 
@@ -801,7 +807,7 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                     {/* Scanning Text */}
                     <div className="bg-slate-900/90 text-slate-300 text-[10px] font-mono px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1.5">
                       <Activity className="w-3 h-3 text-sky-400 animate-spin" />
-                      Ekstraksi 128-dim Multi-Vector Landmark...
+                      Ekstraksi Matriks ArcFace 512-D Vektor Fitur Wajah...
                     </div>
                   </div>
                 )}
@@ -1014,20 +1020,25 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                     <p className="text-[10px] text-slate-500">
                       NIS: <span className="font-mono">{student.nis}</span> &bull; {student.className}
                     </p>
-                    <div className="mt-1">
+                    <div className="mt-1 flex flex-col gap-0.5">
                       {student.hasFaceData ? (
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${
-                          isHighPrecision 
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
-                            : 'bg-blue-100 text-blue-800 border-blue-300'
-                        }`}>
-                          <Sparkles className="w-3 h-3 text-emerald-600" />
-                          {accuracy >= 98 ? 'Multi-Sudut Sempurna' : 'Terdaftar'} ({accuracy}% Akurasi)
-                        </span>
+                        <>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${
+                            isHighPrecision 
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                              : 'bg-blue-100 text-blue-800 border-blue-300'
+                          }`}>
+                            <Sparkles className="w-3 h-3 text-emerald-600" />
+                            ArcFace 512-D ({accuracy}% Akurasi)
+                          </span>
+                          <span className="text-[9px] font-mono text-slate-500 font-semibold pl-1">
+                            Vector: 512-Dim Matrix Ready
+                          </span>
+                        </>
                       ) : (
                         <span className="text-[10px] bg-slate-200 text-slate-600 font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1">
                           <AlertCircle className="w-3 h-3" />
-                          Belum Memiliki Dataset Wajah
+                          Belum Memiliki Dataset Vektor Wajah
                         </span>
                       )}
                     </div>

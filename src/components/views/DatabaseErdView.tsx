@@ -92,21 +92,25 @@ CREATE TABLE \`students\` (
   INDEX \`idx_student_name\` (\`name\`)
 ) ENGINE=InnoDB;
 
--- 5. FACE_PROFILES TABLE (AI Face Recognition Dataset Multi-Sudut)
+-- 5. FACE_PROFILES TABLE (ArcFace AI Deep Learning Face Recognition Dataset 512-D)
 CREATE TABLE \`face_profiles\` (
   \`id\` VARCHAR(36) NOT NULL PRIMARY KEY,
   \`student_id\` VARCHAR(36) NOT NULL UNIQUE,
+  \`student_name\` VARCHAR(100) NOT NULL,
+  \`nis\` VARCHAR(20) NOT NULL,
+  \`photo_url\` TEXT NOT NULL,
   \`confidence_threshold\` DECIMAL(5,2) DEFAULT 85.00,
-  \`face_accuracy_score\` DECIMAL(5,2) DEFAULT 98.50,
-  \`captured_angles_count\` INT DEFAULT 5, -- Jumlah sudut (Depan, Kiri, Kanan, Menunduk, Senyum)
+  \`sample_count\` INT DEFAULT 5,
+  \`status\` VARCHAR(50) DEFAULT 'Registered',
   \`photo_angle_front\` TEXT,
   \`photo_angle_left\` TEXT,
   \`photo_angle_right\` TEXT,
   \`photo_angle_down\` TEXT,
   \`photo_angle_smile\` TEXT,
-  \`angles_json\` JSONB,
-  \`vector_data\` JSON NOT NULL, -- Primary 128-dimensional float vector array
-  \`multi_angle_vectors\` JSON, -- Multi-angle descriptor embeddings
+  \`angles_json\` JSON,
+  \`arcface_model\` VARCHAR(50) DEFAULT 'ArcFace-ResNet50',
+  \`arcface_margin\` DECIMAL(4,2) DEFAULT 0.50,
+  \`arcface_vector_512d\` JSON, -- 512-dimensional floating-point vector matrix
   \`registered_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (\`student_id\`) REFERENCES \`students\`(\`id\`) ON DELETE CASCADE
 ) ENGINE=InnoDB;

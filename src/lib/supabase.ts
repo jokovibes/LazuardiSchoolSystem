@@ -105,10 +105,25 @@ CREATE TABLE IF NOT EXISTS public.face_profiles (
   confidence_threshold NUMERIC(5,2) DEFAULT 85.00,
   sample_count INTEGER DEFAULT 1,
   status TEXT DEFAULT 'Registered',
+  
+  -- Multi-Angle Photo Dataset
+  photo_angle_front TEXT,
+  photo_angle_left TEXT,
+  photo_angle_right TEXT,
+  photo_angle_down TEXT,
+  photo_angle_smile TEXT,
+  angles_json JSONB,
+  
+  -- ArcFace Deep Learning AI Engine Specifications
   arcface_model TEXT DEFAULT 'ArcFace-ResNet50',
   arcface_margin NUMERIC(4,2) DEFAULT 0.50,
   arcface_vector_512d JSONB
 );
+
+-- Migration SQL if face_profiles table already exists in Supabase:
+-- ALTER TABLE public.face_profiles ADD COLUMN IF NOT EXISTS arcface_model TEXT DEFAULT 'ArcFace-ResNet50';
+-- ALTER TABLE public.face_profiles ADD COLUMN IF NOT EXISTS arcface_margin NUMERIC(4,2) DEFAULT 0.50;
+-- ALTER TABLE public.face_profiles ADD COLUMN IF NOT EXISTS arcface_vector_512d JSONB;
 
 -- 6. EARLY_ARRIVALS TABLE
 CREATE TABLE IF NOT EXISTS public.early_arrivals (
