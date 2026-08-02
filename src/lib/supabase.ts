@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS public.students (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. FACE_PROFILES TABLE
+-- 5. FACE_PROFILES TABLE (ArcFace Deep Learning 512-D Neural Matrix Dataset)
 CREATE TABLE IF NOT EXISTS public.face_profiles (
   id TEXT PRIMARY KEY,
   student_id TEXT NOT NULL UNIQUE REFERENCES public.students(id) ON DELETE CASCADE,
@@ -104,7 +104,10 @@ CREATE TABLE IF NOT EXISTS public.face_profiles (
   photo_url TEXT NOT NULL,
   confidence_threshold NUMERIC(5,2) DEFAULT 85.00,
   sample_count INTEGER DEFAULT 1,
-  status TEXT DEFAULT 'Registered'
+  status TEXT DEFAULT 'Registered',
+  arcface_model TEXT DEFAULT 'ArcFace-ResNet50',
+  arcface_margin NUMERIC(4,2) DEFAULT 0.50,
+  arcface_vector_512d JSONB
 );
 
 -- 6. EARLY_ARRIVALS TABLE
@@ -871,7 +874,7 @@ export async function dbUpdateStudentFaceData(
     // Get student details for face_profiles
     const { data: studentData } = await supabase.from('students').select('name, nis').eq('id', studentId).single();
 
-    // 2. Upsert into face_profiles table with 5 angle columns & angles_json
+    // 2. Upsert into face_profiles table with 5 angle columns, angles_json & ArcFace 512D vector parameters
     const profileId = `fp-${studentId}`;
     await supabase.from('face_profiles').upsert({
       id: profileId,
@@ -883,6 +886,8 @@ export async function dbUpdateStudentFaceData(
       confidence_threshold: accuracyScore,
       sample_count: capturedAnglesCount,
       status: 'Registered',
+      arcface_model: 'ArcFace-ResNet50-512D',
+      arcface_margin: 0.50,
       photo_angle_front,
       photo_angle_left,
       photo_angle_right,

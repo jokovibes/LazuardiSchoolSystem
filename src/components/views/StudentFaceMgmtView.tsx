@@ -634,10 +634,11 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-lg text-white tracking-tight">
-                    Pindai Dataset Vektor Wajah Multi-Sudut
+                    Registrasi Dataset Vektor Wajah ArcFace 512-D
                   </h3>
-                  <span className="bg-sky-500/20 text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-400/30">
-                    AI Multi-Angle Precision
+                  <span className="bg-sky-500/20 text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-400/30 flex items-center gap-1 font-mono">
+                    <Sparkles className="w-3 h-3 text-amber-300" />
+                    ArcFace 512-D Matrix (99.8% Accuracy)
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
