@@ -254,7 +254,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ['Siswa Terlambat Datang', totalLate, 'Presensi > 07:15 WIB'],
       ['Izin Keluar Sekolah', totalExit, 'Dengan Surat Izin dari Unit'],
       ['Siswa Belum Kembali', totalBelumKembali, 'Peringatan Overdue Status Active'],
-      ['Pulang Kendaraan Online (Gojek/Grab)', totalOnlineTransport, 'Siswa terpindai Face Recognition saat penjemputan'],
+      ['Pulang Kendaraan Online (Gojek/Grab)', totalOnlineTransport, 'Siswa terdata saat penjemputan'],
       ['Pulang Jalan Kaki', totalJalanKaki, 'Izin Khusus Area Terdekat'],
       ['Pulang Sepeda', totalSepeda, 'Fasilitas Parkir Sepeda'],
       ['Pulang Bus Sekolah', totalBusSekolah, 'Armada Bus Lazuardi'],

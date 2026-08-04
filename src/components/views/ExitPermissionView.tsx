@@ -444,7 +444,7 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
         onClose={() => setIsScannerOpen(false)}
         students={students}
         onSelectStudent={handleSelectFromScanner}
-        title="Scan Wajah Siswa - Izin Keluar Sekolah"
+        title="Pilih / Cari Siswa - Izin Keluar Sekolah"
       />
 
     </div>

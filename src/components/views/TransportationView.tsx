@@ -70,7 +70,7 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) {
-      alert('Silakan pindai atau pilih siswa terlebih dahulu.');
+      alert('Silakan pilih siswa terlebih dahulu.');
       return;
     }
 
@@ -204,7 +204,7 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
                 />
                 <div>
                   <span className="text-[10px] bg-sky-600 text-white font-bold px-2 py-0.5 rounded-md">
-                    SCAN KEPULANGAN READY
+                    PILIH SISWA PULANG READY
                   </span>
                   <h4 className="font-bold text-slate-800 text-base mt-0.5">{selectedStudent.name}</h4>
                   <p className="text-xs text-slate-600">
@@ -302,7 +302,7 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="font-bold text-slate-800 text-base">Rekap Moda Transportasi & Kepulangan</h3>
-            <p className="text-xs text-slate-500">Daftar siswa yang telah terpindai pulang sore ini</p>
+            <p className="text-xs text-slate-500">Daftar siswa yang telah tercatat pulang sore ini</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -395,7 +395,7 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
         onClose={() => setIsScannerOpen(false)}
         students={students}
         onSelectStudent={handleSelectFromScanner}
-        title="Scan Wajah Siswa - Kepulangan & Transportasi"
+        title="Pilih / Cari Siswa - Kepulangan & Transportasi"
       />
 
     </div>

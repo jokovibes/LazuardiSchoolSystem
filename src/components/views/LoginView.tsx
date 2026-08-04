@@ -121,7 +121,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 Portal Presensi & Pemantauan Siswa
               </h2>
               <p className="text-xs text-blue-200 leading-relaxed">
-                Sistem terpadu pengawasan kedatangan dini, keterlambatan, izin keluar, penjemputan, serta verifikasi wajah face recognition.
+                Sistem terpadu pengawasan kedatangan dini, keterlambatan, izin keluar, dan penjemputan.
               </p>
             </div>
 

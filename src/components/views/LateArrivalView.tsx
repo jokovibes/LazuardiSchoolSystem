@@ -80,7 +80,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) {
-      alert('Silakan pilih atau pindai wajah siswa terlebih dahulu.');
+      alert('Silakan pilih siswa terlebih dahulu.');
       return;
     }
 
@@ -217,7 +217,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
               className="p-6 border-2 border-dashed border-slate-300 rounded-2xl text-center bg-slate-50 hover:bg-rose-50/50 hover:border-rose-400 cursor-pointer transition-all"
             >
               <Camera className="w-8 h-8 text-rose-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-700">Klik di sini untuk Pindai Wajah atau Cari Siswa Terlambat</p>
+              <p className="text-sm font-bold text-slate-700">Klik di sini untuk Cari atau Pilih Siswa Terlambat</p>
               <p className="text-xs text-slate-500 mt-1">Sistem otomatis menampilkan identitas lengkap siswa</p>
             </div>
           )}
@@ -418,7 +418,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
         onClose={() => setIsScannerOpen(false)}
         students={students}
         onSelectStudent={handleSelectFromScanner}
-        title="Scan Wajah Siswa Terlambat"
+        title="Pilih / Cari Siswa Terlambat"
       />
 
     </div>

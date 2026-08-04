@@ -62,7 +62,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) {
-      alert('Silakan pilih atau pindai wajah siswa terlebih dahulu.');
+      alert('Silakan pilih siswa terlebih dahulu.');
       return;
     }
 
@@ -452,7 +452,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
         onClose={() => setIsScannerOpen(false)}
         students={students}
         onSelectStudent={handleSelectFromScanner}
-        title="Scan Wajah Siswa - Datang Terlalu Pagi"
+        title="Pilih / Cari Siswa - Datang Terlalu Pagi"
       />
 
     </div>
