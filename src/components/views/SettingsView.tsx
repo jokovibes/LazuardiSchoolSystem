@@ -316,45 +316,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
 
-            {/* Section 3: AI Face Recognition ArcFace Engine Sensitivity */}
+            {/* Section 3: Mode Pencatatan & Input Siswa Manual */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
                   <Sliders className="w-5 h-5 text-indigo-600" />
-                  3. Konfigurasi Mesin AI ArcFace Deep Neural Network
+                  3. Mode Input & Pencatatan Presensi Siswa
                 </h3>
-                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
-                  <Cpu className="w-3.5 h-3.5" />
-                  ArcFace 512-D Embedding Engine
+                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+                  <Users className="w-3.5 h-3.5" />
+                  Input Manual (Nama & Kelas)
                 </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Arsitektur Model Neural Network</label>
-                  <select
-                    value="ResNet50-ArcFace"
-                    onChange={() => {}}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-indigo-900"
-                  >
-                    <option value="ResNet50-ArcFace">ArcFace ResNet-50 (512-D Vector) - Presisi Ultra Tinggi 99.8%</option>
-                    <option value="MobileFaceNet-ArcFace">ArcFace MobileFaceNet (512-D Vector) - Pindai Cepat 15ms</option>
-                  </select>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Metode Pencatatan Utama</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value="Pencarian & Pemilihan Siswa Manual (Nama & Kelas)"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-indigo-900 cursor-not-allowed"
+                  />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Menggunakan Additive Angular Margin Loss ($s=64, m=0.50$) untuk pemisahan klaster fitur wajah yang sangat presisi.
+                    Petugas memilih atau menginput data siswa langsung berdasarkan Nama, NIS, Kelas, dan Unit Sekolah.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Metode Pencocokan Vektor</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Penyimpanan & Sinkronisasi Data</label>
                   <input
                     type="text"
                     readOnly
-                    value="Cosine Similarity Score & Cosine Distance (L2 Norm = 1.0)"
+                    value="Database PostgreSQL Supabase & Local Storage Backup"
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-semibold text-slate-700 cursor-not-allowed"
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Membandingkan sudut antara 512 elemen vektor fitur secara real-time pada GPU/WASM.
+                    Setiap entri presensi tersimpan aman dan tersinkronisasi otomatis secara real-time.
                   </p>
                 </div>
               </div>

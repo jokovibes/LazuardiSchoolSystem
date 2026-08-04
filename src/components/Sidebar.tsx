@@ -94,8 +94,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'face-mgmt',
-      label: 'Data Siswa & Wajah',
-      icon: ScanFace,
+      label: 'Daftar Siswa',
+      icon: Users,
       allowedRoles: ['Super Admin', 'Admin', 'Security'],
       category: 'SISTEM & AKUNTABILITAS'
     },

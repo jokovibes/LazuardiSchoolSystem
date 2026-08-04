@@ -162,7 +162,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
             Pencatatan Siswa Terlambat Datang
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Pencatatan keterlambatan siswa via Face Recognition / Input Manual beserta foto bukti dan alasan.
+            Pencatatan keterlambatan siswa via Pemilihan / Input Manual beserta foto bukti dan alasan.
           </p>
         </div>
 
@@ -170,8 +170,8 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
           onClick={() => setIsScannerOpen(true)}
           className="bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-md shadow-rose-600/20 transition-all cursor-pointer shrink-0"
         >
-          <Camera className="w-5 h-5 text-rose-200" />
-          Pindai Wajah / Cari Siswa
+          <Search className="w-5 h-5 text-rose-200" />
+          Pilih / Cari Siswa (Nama & Kelas)
         </button>
       </div>
 

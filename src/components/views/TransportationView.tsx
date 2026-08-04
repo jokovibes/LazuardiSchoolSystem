@@ -137,7 +137,7 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
             Pencatatan Kepulangan & Moda Transportasi
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Pencatatan Face Recognition saat penjemputan siswa, driver kendaraan online (Gojek/Grab), penjemputan orang tua, bus, dan jalan kaki.
+            Pencatatan penjemputan siswa, driver kendaraan online (Gojek/Grab), penjemputan orang tua, bus, dan jalan kaki.
           </p>
         </div>
 
@@ -145,8 +145,8 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
           onClick={() => setIsScannerOpen(true)}
           className="bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-700 hover:to-blue-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-md shadow-sky-600/20 transition-all cursor-pointer shrink-0"
         >
-          <Camera className="w-5 h-5 text-sky-200" />
-          Scan Wajah Kepulangan Siswa
+          <Search className="w-5 h-5 text-sky-200" />
+          Pilih / Cari Siswa (Nama & Kelas)
         </button>
       </div>
 
@@ -226,9 +226,9 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
               onClick={() => setIsScannerOpen(true)}
               className="p-6 border-2 border-dashed border-slate-300 rounded-2xl text-center bg-slate-50 hover:bg-sky-50/50 hover:border-sky-400 cursor-pointer transition-all"
             >
-              <Camera className="w-8 h-8 text-sky-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-700">Pindai Wajah Siswa Saat Kepulangan / Penjemputan Driver</p>
-              <p className="text-xs text-slate-500 mt-1">Sistem otomatis mencocokkan data profil siswa</p>
+              <Search className="w-8 h-8 text-sky-500 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-700">Pilih / Cari Siswa (Nama & Kelas) Saat Kepulangan / Penjemputan</p>
+              <p className="text-xs text-slate-500 mt-1">Klik di sini untuk memilih siswa dari daftar atau ketik nama & kelas</p>
             </div>
           )}
 

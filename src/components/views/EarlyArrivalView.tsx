@@ -139,8 +139,8 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
           onClick={() => setIsScannerOpen(true)}
           className="bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-bold px-5 py-2.5 rounded-xl text-sm flex items-center gap-2 shadow-md shadow-blue-700/20 transition-all cursor-pointer shrink-0"
         >
-          <Camera className="w-5 h-5 text-sky-300" />
-          Pindai Wajah ArcFace AI / Cari Siswa
+          <Search className="w-5 h-5 text-sky-300" />
+          Pilih / Cari Siswa (Nama & Kelas)
         </button>
       </div>
 
@@ -164,7 +164,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
                 />
                 <div>
                   <span className="text-[10px] bg-blue-600 text-white font-bold px-2 py-0.5 rounded-md">
-                    TERIDENTIFIKASI
+                    SISWA TERPILIH
                   </span>
                   <h4 className="font-bold text-slate-800 text-base mt-0.5">{selectedStudent.name}</h4>
                   <p className="text-xs text-slate-600">
@@ -182,13 +182,49 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
               </button>
             </div>
           ) : (
-            <div 
-              onClick={() => setIsScannerOpen(true)}
-              className="p-6 border-2 border-dashed border-slate-300 rounded-2xl text-center bg-slate-50 hover:bg-blue-50/50 hover:border-blue-400 cursor-pointer transition-all"
-            >
-              <Camera className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-700">Klik di sini untuk Pindai Wajah atau Cari Nama/NIS Siswa</p>
-              <p className="text-xs text-slate-500 mt-1">Sistem akan otomatis mengisi Nama, NIS, Kelas, dan Unit Sekolah</p>
+            <div className="p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 space-y-3">
+              <div 
+                onClick={() => setIsScannerOpen(true)}
+                className="text-center cursor-pointer py-2 hover:bg-blue-50/50 rounded-xl transition-all"
+              >
+                <Search className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-700">Klik di sini untuk Cari Nama & Kelas Siswa</p>
+                <p className="text-xs text-slate-500 mt-0.5">Atau pilih langsung dari daftar siswa di bawah</p>
+              </div>
+
+              {/* Direct Dropdown Selection */}
+              <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Pilih Langsung Siswa</label>
+                  <select
+                    onChange={(e) => {
+                      const found = students.find(s => s.id === e.target.value);
+                      if (found) {
+                        setSelectedStudent(found);
+                        const now = new Date();
+                        setArrivalTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+                      }
+                    }}
+                    defaultValue=""
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="" disabled>-- Pilih Siswa dari List --</option>
+                    {students.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.className} - {s.unitName})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status Pilihan</label>
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="Belum ada siswa dipilih"
+                    className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-medium text-slate-500 cursor-not-allowed"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

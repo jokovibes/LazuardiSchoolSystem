@@ -403,6 +403,18 @@ export default function App() {
     addAuditLog('Tambah Siswa', 'Master Siswa', `Menambahkan siswa baru ${newStudent.name} (NIS: ${newStudent.nis})`);
   };
 
+  const handleBulkAddStudents = (newStudentsList: Omit<Student, 'id'>[]) => {
+    const createdList: Student[] = newStudentsList.map((st, idx) => ({
+      ...st,
+      id: `std-${Date.now()}-${idx}`
+    }));
+    setStudents(prev => [...createdList, ...prev]);
+    createdList.forEach(s => {
+      dbInsertStudent(s).catch(err => console.error('Supabase bulk insert error:', err));
+    });
+    addAuditLog('Impor Masal Siswa', 'Master Siswa', `Berhasil mengimpor ${createdList.length} siswa baru via CSV/Excel`);
+  };
+
   const handleEditStudent = (updatedStudent: Student) => {
     setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
     dbUpdateStudent(updatedStudent).catch(err => console.error('Supabase edit student error:', err));
@@ -711,6 +723,7 @@ export default function App() {
               units={units}
               classes={classes}
               onAddStudent={handleAddStudent}
+              onBulkAddStudents={handleBulkAddStudents}
               onEditStudent={handleEditStudent}
               onDeleteStudent={handleDeleteStudent}
               onRegisterFace={handleRegisterFace}

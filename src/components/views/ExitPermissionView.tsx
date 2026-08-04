@@ -209,9 +209,9 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
               onClick={() => setIsScannerOpen(true)}
               className="p-6 border-2 border-dashed border-slate-300 rounded-2xl text-center bg-slate-50 hover:bg-blue-50/50 hover:border-blue-400 cursor-pointer transition-all"
             >
-              <Camera className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-700">Pindai Wajah / Cari Siswa yang Mengajukan Izin Keluar</p>
-              <p className="text-xs text-slate-500 mt-1">Gunakan kamera atau ketikkan NIS untuk pemanggilan instan</p>
+              <Search className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+              <p className="text-sm font-bold text-slate-700">Pilih / Cari Siswa (Nama & Kelas) yang Mengajukan Izin Keluar</p>
+              <p className="text-xs text-slate-500 mt-1">Klik di sini untuk memilih dari daftar atau ketik Nama & Kelas</p>
             </div>
           )}
 

@@ -178,7 +178,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       }}
                       className="text-xs text-blue-600 font-semibold hover:underline"
                     >
-                      Lihat Semua Notifikasi
+                      
                     </button>
                   </div>
                 </div>
