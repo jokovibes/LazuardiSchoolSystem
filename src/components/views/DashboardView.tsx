@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sunrise, 
   Clock, 
@@ -44,7 +44,7 @@ import {
   SchoolUnit, 
   StudentClass 
 } from '../../types';
-import { exportToExcel, exportToPdf, shareRekapToUnit } from '../../utils/exporter';
+import { exportToExcel, exportToPdf, exportDashboardWithChartsToPdf, shareRekapToUnit } from '../../utils/exporter';
 
 interface DashboardViewProps {
   students: Student[];
@@ -67,6 +67,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [selectedUnit, setSelectedUnit] = useState<string>('ALL');
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+
+  const chart1Ref = useRef<HTMLDivElement>(null);
+  const chart2Ref = useRef<HTMLDivElement>(null);
+  const chart3Ref = useRef<HTMLDivElement>(null);
 
   const getTodayString = () => {
     const d = new Date();
@@ -263,19 +268,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     exportToExcel('Ringkasan_Dashboard', headers, rows, `Ringkasan_Dashboard_Presensi_${selectedDate}`);
   };
 
-  const handleExportDashboardPdf = () => {
-    const headers = ['Indikator Aktivitas', 'Jumlah Siswa', 'Keterangan Analitik'];
-    const rows = [
-      ['Total Datang Terlalu Pagi', `${totalEarly} Siswa`, 'Hadir sebelum jam 06:15 WIB'],
-      ['Total Terlambat Datang', `${totalLate} Siswa`, 'Hadir setelah jam 07:15 WIB'],
-      ['Total Izin Keluar Sekolah', `${totalExit} Siswa`, 'Prosedur Izin Meninggalkan Kelas'],
-      ['Masih Belum Kembali', `${totalBelumKembali} Siswa`, 'Memerlukan Konfirmasi Petugas'],
-      ['Transportasi Online (Gojek/Grab)', `${totalOnlineTransport} Siswa`, 'Izin Penjemputan Driver'],
-      ['Jalan Kaki', `${totalJalanKaki} Siswa`, 'Area Radius < 1 KM'],
-      ['Sepeda', `${totalSepeda} Siswa`, 'Jalur Sepeda Sekolah'],
-      ['Dijemput Orang Tua', `${totalDijemput} Siswa`, 'Zona Drop-off / Pickup']
-    ];
-    exportToPdf('Dashboard_Analitik_Lazuardi', headers, rows, `Dashboard_Analitik_${selectedDate}`);
+  const handleExportDashboardPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const headers = ['Indikator Aktivitas', 'Jumlah Siswa', 'Keterangan Analitik'];
+      const rows = [
+        ['Total Datang Terlalu Pagi', `${totalEarly} Siswa`, 'Hadir sebelum jam 06:15 WIB'],
+        ['Total Terlambat Datang', `${totalLate} Siswa`, 'Hadir setelah jam 07:15 WIB'],
+        ['Total Izin Keluar Sekolah', `${totalExit} Siswa`, 'Prosedur Izin Meninggalkan Kelas'],
+        ['Masih Belum Kembali', `${totalBelumKembali} Siswa`, 'Memerlukan Konfirmasi Petugas'],
+        ['Transportasi Online (Gojek/Grab)', `${totalOnlineTransport} Siswa`, 'Izin Penjemputan Driver'],
+        ['Jalan Kaki', `${totalJalanKaki} Siswa`, 'Area Radius < 1 KM'],
+        ['Sepeda', `${totalSepeda} Siswa`, 'Jalur Sepeda Sekolah'],
+        ['Bus Sekolah', `${totalBusSekolah} Siswa`, 'Armada Bus Lazuardi'],
+        ['Dijemput Orang Tua', `${totalDijemput} Siswa`, 'Zona Drop-off / Pickup']
+      ];
+
+      const chartElements = [chart1Ref.current, chart2Ref.current, chart3Ref.current];
+      const filterInfo = `Unit: ${selectedUnit === 'ALL' ? 'Semua Unit' : selectedUnit} | Kelas: ${selectedClass === 'ALL' ? 'Semua Kelas' : selectedClass} | Tanggal: ${selectedDate}`;
+
+      await exportDashboardWithChartsToPdf(
+        'Dashboard Analitik Presensi & Pergerakan Siswa',
+        headers,
+        rows,
+        chartElements,
+        `Dashboard_Analitik_Grafik_${selectedDate}`,
+        filterInfo
+      );
+    } catch (err) {
+      console.error('Error generating PDF with charts:', err);
+      alert('Terjadi kesalahan saat mengunduh PDF. Silakan coba lagi.');
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   return (
@@ -356,11 +381,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
             <button
               onClick={handleExportDashboardPdf}
-              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
-              title="Export PDF"
+              disabled={isExportingPdf}
+              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+              title="Export PDF dengan Grafik"
             >
-              <Download className="w-3.5 h-3.5" />
-              PDF
+              <Download className={`w-3.5 h-3.5 ${isExportingPdf ? 'animate-bounce' : ''}`} />
+              {isExportingPdf ? 'Mengekspor...' : 'PDF'}
             </button>
             <button
               onClick={() => shareRekapToUnit('SEMUA UNIT', 'Dashboard Utama', totalEarly + totalLate + totalExit, [
@@ -509,7 +535,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Chart 1: Daily Trend Area Chart */}
-        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div ref={chart1Ref} className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
@@ -553,7 +579,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Chart 2: Transportation Pie Distribution */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div ref={chart2Ref} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <div className="mb-2">
             <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
               <Car className="w-5 h-5 text-indigo-600" />
@@ -610,7 +636,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Breakdown Per Unit Bar Chart */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div ref={chart3Ref} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <h3 className="font-bold text-slate-800 text-base mb-1">
             Rekap Indikator Per Unit Sekolah (SD, SMP, SMA)
           </h3>
