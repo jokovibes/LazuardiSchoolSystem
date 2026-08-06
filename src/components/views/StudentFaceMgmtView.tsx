@@ -16,7 +16,10 @@ import {
   FileSpreadsheet,
   Download,
   AlertTriangle,
-  FileCheck
+  FileCheck,
+  Image as ImageIcon,
+  Camera,
+  Sparkles
 } from 'lucide-react';
 import { Student, FaceProfile, SchoolUnit, StudentClass } from '../../types';
 
@@ -56,6 +59,9 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
   const [parsedImportRows, setParsedImportRows] = useState<Omit<Student, 'id'>[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [importedCountAlert, setImportedCountAlert] = useState<number | null>(null);
+  const [uploadedPhotoMap, setUploadedPhotoMap] = useState<Record<string, string>>({});
+  const [bulkPhotoStatus, setBulkPhotoStatus] = useState<string | null>(null);
+  const [matchedPhotoCount, setMatchedPhotoCount] = useState<number>(0);
 
   // New Student State
   const [newNis, setNewNis] = useState('');
@@ -81,14 +87,33 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
   const filteredClassesNew = classes.filter(c => c.unitId === newUnitId);
   const filteredClassesEdit = classes.filter(c => c.unitId === editUnitId);
 
+  // Helper to match uploaded photos map against student rows
+  const applyPhotoMapToRows = (rows: Omit<Student, 'id'>[], pMap: Record<string, string>) => {
+    let count = 0;
+    const updated = rows.map(row => {
+      const cleanNis = row.nis.toLowerCase().trim();
+      const cleanName = row.name.toLowerCase().trim();
+      const sanitizedNis = cleanNis.replace(/[^a-z0-9]/g, '');
+      const sanitizedName = cleanName.replace(/[^a-z0-9]/g, '');
+
+      const matchedUrl = pMap[cleanNis] || pMap[sanitizedNis] || pMap[cleanName] || pMap[sanitizedName];
+      if (matchedUrl) {
+        count++;
+        return { ...row, photoUrl: matchedUrl };
+      }
+      return row;
+    });
+    return { updated, count };
+  };
+
   // Download Template CSV/Excel
   const downloadCSVTemplate = () => {
     const csvContent = "\uFEFF" + 
-      "NIS,Nama_Lengkap,Jenis_Kelamin,Unit_Sekolah,Kelas,Nama_Orang_Tua,No_HP_Orang_Tua,Alamat\n" +
-      "2026010,Ahmad Albar,L,SD Lazuardi,1-A,Dedi Albar,081234567890,Jl. Margonda No. 12 Depok\n" +
-      "2026011,Nadia Safira,P,SD Lazuardi,1-B,Safriadi,081298765432,Jl. Juanda No. 45 Depok\n" +
-      "2026012,Bagas Pratama,L,SMP Lazuardi,7-A,Irwan Pratama,081311223344,Jl. Raya Cinere No. 88\n" +
-      "2026013,Aisyah Putri,P,SMA Lazuardi,10-IPA,Suryadi,081599887766,Jl. Akses UI No. 10";
+      "NIS,Nama_Lengkap,Jenis_Kelamin,Unit_Sekolah,Kelas,Nama_Orang_Tua,No_HP_Orang_Tua,Alamat,URL_Foto\n" +
+      "2026010,Ahmad Albar,L,SD Lazuardi,1-A,Dedi Albar,081234567890,Jl. Margonda No. 12 Depok,https://images.unsplash.com/photo-1544717305-2782549b5136?w=200\n" +
+      "2026011,Nadia Safira,P,SD Lazuardi,1-B,Safriadi,081298765432,Jl. Juanda No. 45 Depok,https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200\n" +
+      "2026012,Bagas Pratama,L,SMP Lazuardi,7-A,Irwan Pratama,081311223344,Jl. Raya Cinere No. 88,\n" +
+      "2026013,Aisyah Putri,P,SMA Lazuardi,10-IPA,Suryadi,081599887766,Jl. Akses UI No. 10,";
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -98,6 +123,67 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Bulk Image Upload Handler (Multiple Files)
+  const handleBulkPhotosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const fileList: File[] = Array.from(files);
+    const newPhotoMap: Record<string, string> = { ...uploadedPhotoMap };
+
+    for (const file of fileList) {
+      if (!file.type.startsWith('image/')) continue;
+
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => resolve((evt.target?.result as string) || '');
+        reader.readAsDataURL(file);
+      });
+
+      if (base64) {
+        // Extract filename without extension
+        const rawName = file.name.substring(0, file.name.lastIndexOf('.')).toLowerCase().trim();
+        newPhotoMap[rawName] = base64;
+
+        // Also add sanitized key
+        const sanitizedKey = rawName.replace(/[^a-z0-9]/g, '');
+        if (sanitizedKey) {
+          newPhotoMap[sanitizedKey] = base64;
+        }
+      }
+    }
+
+    setUploadedPhotoMap(newPhotoMap);
+
+    if (parsedImportRows.length > 0) {
+      const { updated, count } = applyPhotoMapToRows(parsedImportRows, newPhotoMap);
+      setParsedImportRows(updated);
+      setMatchedPhotoCount(count);
+      setBulkPhotoStatus(`${fileList.length} file foto diunggah. ${count} foto cocok & terhubung dengan data siswa!`);
+    } else {
+      setBulkPhotoStatus(`${fileList.length} file foto disiapkan. Silakan unggah file CSV data siswa.`);
+    }
+  };
+
+  // Individual Row Photo Picker
+  const handleSingleRowPhotoUpload = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target?.result as string;
+      if (dataUrl) {
+        setParsedImportRows(prev => {
+          const next = [...prev];
+          next[index] = { ...next[index], photoUrl: dataUrl };
+          return next;
+        });
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // CSV File Parser
@@ -158,6 +244,7 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
         const parentIdx = findIndex(['orang_tua', 'wali', 'parent']);
         const phoneIdx = findIndex(['hp', 'phone', 'wa', 'telepon']);
         const addressIdx = findIndex(['alamat', 'address']);
+        const photoIdx = findIndex(['foto', 'photo', 'url_foto', 'gambar', 'image', 'url']);
 
         const parsedStudents: Omit<Student, 'id'>[] = [];
 
@@ -175,6 +262,7 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
           const rawParent = parentIdx !== -1 ? row[parentIdx] : row[5] || 'Orang Tua';
           const rawPhone = phoneIdx !== -1 ? row[phoneIdx] : row[6] || '08123456789';
           const rawAddress = addressIdx !== -1 ? row[addressIdx] : row[7] || 'Depok';
+          const rawPhoto = photoIdx !== -1 && row[photoIdx] ? row[photoIdx] : '';
 
           // Match unit object if exists
           const unitObj = units.find(u => u.name.toLowerCase().includes(rawUnit.toLowerCase()) || rawUnit.toLowerCase().includes(u.name.toLowerCase()));
@@ -198,7 +286,7 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
               parentName: rawParent,
               parentPhone: rawPhone,
               address: rawAddress,
-              photoUrl: `https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80`,
+              photoUrl: rawPhoto || `https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80`,
               hasFaceData: true
             });
           }
@@ -207,7 +295,13 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
         if (parsedStudents.length === 0) {
           setImportError('Tidak ada data siswa yang valid ditemukan dalam file.');
         } else {
-          setParsedImportRows(parsedStudents);
+          // Apply uploaded photo map
+          const { updated, count } = applyPhotoMapToRows(parsedStudents, uploadedPhotoMap);
+          setParsedImportRows(updated);
+          if (count > 0) {
+            setMatchedPhotoCount(count);
+            setBulkPhotoStatus(`${count} foto otomatis terhubung berdasarkan NIS / Nama Siswa.`);
+          }
         }
       } catch (err) {
         console.error('Error parsing file:', err);
@@ -545,10 +639,10 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
         </div>
       </div>
 
-      {/* Modal Impor Masal (CSV / Excel) */}
+      {/* Modal Impor Masal (CSV / Excel & Foto Masal) */}
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-150">
             
             {/* Modal Header */}
             <div className="bg-emerald-800 text-white p-5 flex items-center justify-between">
@@ -557,8 +651,8 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                   <FileSpreadsheet className="w-6 h-6 text-emerald-200" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base">Impor Masal Data Siswa (CSV / Excel)</h3>
-                  <p className="text-xs text-emerald-200">Unggah berkas data siswa masal sekaligus untuk dimasukkan ke database</p>
+                  <h3 className="font-bold text-base">Impor Masal Data & Foto Siswa</h3>
+                  <p className="text-xs text-emerald-200">Unggah berkas CSV/Excel sekaligus berkas foto siswa tanpa perlu mengunggah manual satu persatu</p>
                 </div>
               </div>
               <button 
@@ -566,6 +660,9 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                   setIsImportModalOpen(false);
                   setParsedImportRows([]);
                   setImportError(null);
+                  setUploadedPhotoMap({});
+                  setBulkPhotoStatus(null);
+                  setMatchedPhotoCount(0);
                 }}
                 className="p-1 hover:bg-white/10 rounded-lg text-emerald-200 hover:text-white cursor-pointer"
               >
@@ -584,7 +681,7 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                       Langkah 1: Unduh Contoh Template CSV / Excel
                     </h4>
                     <p className="text-[11px] text-emerald-800 mt-1">
-                      Gunakan format kolom baku di bawah ini agar sistem membaca data siswa dengan presisi.
+                      Format CSV siap pakai. Kolom <code className="bg-emerald-100 px-1 py-0.5 rounded text-emerald-900 font-bold">URL_Foto</code> bersifat opsional jika Anda ingin memasukkan tautan gambar langsung.
                     </p>
                   </div>
                   <button
@@ -609,7 +706,8 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                         <th className="p-2 border-r border-emerald-200">Kelas</th>
                         <th className="p-2 border-r border-emerald-200">Nama_Orang_Tua</th>
                         <th className="p-2 border-r border-emerald-200">No_HP_Orang_Tua</th>
-                        <th className="p-2">Alamat</th>
+                        <th className="p-2 border-r border-emerald-200">Alamat</th>
+                        <th className="p-2">URL_Foto (Opsional)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-emerald-100 text-slate-700 font-mono text-[10px]">
@@ -621,7 +719,8 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                         <td className="p-2 border-r border-emerald-100">1-A</td>
                         <td className="p-2 border-r border-emerald-100 font-sans">Dedi Albar</td>
                         <td className="p-2 border-r border-emerald-100">081234567890</td>
-                        <td className="p-2 font-sans">Jl. Margonda Depok</td>
+                        <td className="p-2 border-r border-emerald-100 font-sans">Jl. Margonda Depok</td>
+                        <td className="p-2 font-mono text-slate-500 truncate max-w-[120px]">https://...</td>
                       </tr>
                       <tr className="bg-slate-50/50">
                         <td className="p-2 border-r border-emerald-100 font-bold text-slate-900">2026011</td>
@@ -631,30 +730,68 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                         <td className="p-2 border-r border-emerald-100">1-B</td>
                         <td className="p-2 border-r border-emerald-100 font-sans">Safriadi</td>
                         <td className="p-2 border-r border-emerald-100">081298765432</td>
-                        <td className="p-2 font-sans">Jl. Juanda Depok</td>
+                        <td className="p-2 border-r border-emerald-100 font-sans">Jl. Juanda Depok</td>
+                        <td className="p-2 font-mono text-slate-400">-</td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              {/* Step 2: Upload File */}
+              {/* Step 2: Upload Files (Data CSV & Foto Masal) */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-700">
-                  Langkah 2: Pilih Berkas CSV / Excel (*.csv, *.txt)
+                <label className="block text-xs font-bold text-slate-800">
+                  Langkah 2: Pilih Berkas Data Siswa & Berkas Foto Masal
                 </label>
-                <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-6 text-center bg-slate-50 hover:bg-emerald-50/30 transition-all relative">
-                  <Upload className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-                  <p className="text-xs font-bold text-slate-700">Klik atau Drag & Drop Berkas CSV / Excel ke Sini</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Mendukung format .csv dengan pemisah koma (,) atau titik koma (;)</p>
-                  <input
-                    type="file"
-                    accept=".csv,.txt,.xlsx,.xls"
-                    onChange={handleFileUploadCSV}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                  />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* CSV Upload Dropzone */}
+                  <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-5 text-center bg-slate-50 hover:bg-emerald-50/30 transition-all relative flex flex-col items-center justify-center min-h-[130px]">
+                    <Upload className="w-7 h-7 text-emerald-600 mb-1.5" />
+                    <p className="text-xs font-bold text-slate-800">1. Upload Berkas CSV / Excel Data Siswa</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Format .csv, .txt, .xlsx</p>
+                    <input
+                      type="file"
+                      accept=".csv,.txt,.xlsx,.xls"
+                      onChange={handleFileUploadCSV}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </div>
+
+                  {/* Bulk Photos Upload Dropzone */}
+                  <div className="border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-xl p-5 text-center bg-blue-50/40 hover:bg-blue-50 transition-all relative flex flex-col items-center justify-center min-h-[130px]">
+                    <div className="p-2 bg-blue-100 rounded-full text-blue-600 mb-1.5">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <p className="text-xs font-bold text-blue-900">2. Upload Berkas Foto Siswa Masal (Banyak File)</p>
+                    <p className="text-[10px] text-blue-700 mt-0.5 max-w-[260px]">
+                      Pilih sekaligus banyak file gambar (.jpg / .png). Sistem mencocokkan otomatis berdasarkan NIS atau Nama file!
+                    </p>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleBulkPhotosUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </div>
                 </div>
               </div>
+
+              {/* Status Banner for Bulk Photo Upload */}
+              {bulkPhotoStatus && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-xl text-xs flex items-center justify-between gap-2 shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span className="font-medium">{bulkPhotoStatus}</span>
+                  </div>
+                  {matchedPhotoCount > 0 && (
+                    <span className="bg-blue-600 text-white font-bold text-[10px] px-2.5 py-0.5 rounded-full shrink-0">
+                      {matchedPhotoCount} Foto Terhubung
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Error Banner */}
               {importError && (
@@ -670,17 +807,18 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                   <div className="flex items-center justify-between">
                     <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                       <FileCheck className="w-4 h-4 text-emerald-600" />
-                      Preview Hasil Pembacaan Berkas ({parsedImportRows.length} Siswa Terbaca)
+                      Preview Hasil Pembacaan Data ({parsedImportRows.length} Siswa Terbaca)
                     </h4>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
                       Siap Diimpor
                     </span>
                   </div>
 
-                  <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
                         <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[10px] uppercase">
+                          <th className="p-2.5 text-center">Foto Siswa</th>
                           <th className="p-2.5">NIS</th>
                           <th className="p-2.5">Nama Siswa</th>
                           <th className="p-2.5">JK</th>
@@ -693,15 +831,42 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                       <tbody className="divide-y divide-slate-100 text-[11px]">
                         {parsedImportRows.map((row, idx) => {
                           const isDuplicate = students.some(s => s.nis === row.nis);
+                          const isCustomPhoto = row.photoUrl && !row.photoUrl.includes('unsplash.com');
+
                           return (
-                            <tr key={idx} className="hover:bg-slate-50">
+                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                              {/* Avatar Preview + Row-level Photo Change */}
+                              <td className="p-2 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <div className="relative group">
+                                    <img
+                                      src={row.photoUrl}
+                                      alt={row.name}
+                                      className="w-9 h-9 rounded-full object-cover border border-slate-300 shadow-2xs"
+                                    />
+                                    <label
+                                      className="absolute inset-0 bg-slate-900/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
+                                      title="Ganti foto siswa ini"
+                                    >
+                                      <Camera className="w-3.5 h-3.5" />
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleSingleRowPhotoUpload(idx, e)}
+                                        className="hidden"
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+                              </td>
+
                               <td className="p-2.5 font-mono font-bold text-slate-800">{row.nis}</td>
                               <td className="p-2.5 font-semibold text-slate-800">{row.name}</td>
-                              <td className="p-2.5">{row.gender}</td>
+                              <td className="p-2.5 font-medium">{row.gender}</td>
                               <td className="p-2.5 text-slate-600">{row.unitName}</td>
                               <td className="p-2.5 font-medium text-blue-700">{row.className}</td>
                               <td className="p-2.5 text-slate-500">{row.parentName || '-'}</td>
-                              <td className="p-2.5 text-center">
+                              <td className="p-2.5 text-center space-y-1">
                                 {isDuplicate ? (
                                   <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md inline-block">
                                     Duplikat NIS
@@ -710,6 +875,13 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                                   <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-md inline-block">
                                     Valid
                                   </span>
+                                )}
+                                {isCustomPhoto && (
+                                  <div>
+                                    <span className="bg-blue-100 text-blue-800 text-[9px] font-bold px-1.5 py-0.5 rounded-md inline-block">
+                                      Foto Diset
+                                    </span>
+                                  </div>
                                 )}
                               </td>
                             </tr>
@@ -731,6 +903,9 @@ export const StudentFaceMgmtView: React.FC<StudentFaceMgmtViewProps> = ({
                   setIsImportModalOpen(false);
                   setParsedImportRows([]);
                   setImportError(null);
+                  setUploadedPhotoMap({});
+                  setBulkPhotoStatus(null);
+                  setMatchedPhotoCount(0);
                 }}
                 className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold rounded-xl text-xs cursor-pointer"
               >
