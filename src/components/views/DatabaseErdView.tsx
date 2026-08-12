@@ -172,6 +172,7 @@ CREATE TABLE \`online_transport\` (
   \`transport_mode\` VARCHAR(50) NOT NULL,
   \`driver_name\` VARCHAR(100) NULL,
   \`vehicle_plate\` VARCHAR(20) NULL,
+  \`vehicle_photo_url\` TEXT NULL,
   \`officer_name\` VARCHAR(100) NOT NULL,
   \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (\`student_id\`) REFERENCES \`students\`(\`id\`)

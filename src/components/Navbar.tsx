@@ -11,7 +11,10 @@ import {
   User, 
   AlertTriangle,
   Menu,
-  Sparkles
+  Sparkles,
+  CheckCheck,
+  Trash2,
+  ExternalLink
 } from 'lucide-react';
 import { User as UserType, RoleType, NotificationItem } from '../types';
 
@@ -22,6 +25,9 @@ interface NavbarProps {
   onLogout: () => void;
   notifications: NotificationItem[];
   onMarkNotificationRead: (id: string) => void;
+  onMarkAllNotificationsRead?: () => void;
+  onClearAllNotifications?: () => void;
+  onDeleteNotification?: (id: string) => void;
   onOpenNotificationsModal: () => void;
   onToggleSidebar: () => void;
 }
@@ -33,6 +39,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   notifications,
   onMarkNotificationRead,
+  onMarkAllNotificationsRead,
+  onClearAllNotifications,
+  onDeleteNotification,
   onOpenNotificationsModal,
   onToggleSidebar
 }) => {
@@ -131,6 +140,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Notification Popup Menu */}
               {isNotifOpen && (
                 <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 text-slate-800 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                  {/* Header Bar */}
                   <div className="p-3.5 bg-slate-900 text-white flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Bell className="w-4 h-4 text-sky-400" />
@@ -141,45 +151,93 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </span>
                   </div>
 
+                  {/* Quick Actions Bar */}
+                  <div className="bg-slate-100 p-2 border-b border-slate-200 flex items-center justify-between text-xs font-semibold px-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onMarkAllNotificationsRead) onMarkAllNotificationsRead();
+                      }}
+                      disabled={unreadNotifs.length === 0}
+                      className="text-blue-700 hover:text-blue-900 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                      title="Tandai semua notifikasi sebagai sudah dibaca"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
+                      Sudah Dibaca Semua
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onClearAllNotifications && window.confirm('Hapus seluruh notifikasi dari sistem?')) {
+                          onClearAllNotifications();
+                        }
+                      }}
+                      disabled={notifications.length === 0}
+                      className="text-rose-600 hover:text-rose-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer"
+                      title="Clear / Hapus seluruh notifikasi"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Clear Notifikasi
+                    </button>
+                  </div>
+
+                  {/* Notifications List */}
                   <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
                     {notifications.length === 0 ? (
-                      <p className="p-4 text-center text-xs text-slate-500">Tidak ada notifikasi saat ini.</p>
+                      <div className="p-6 text-center text-slate-500 space-y-1">
+                        <Bell className="w-6 h-6 text-slate-300 mx-auto" />
+                        <p className="text-xs font-medium">Tidak ada notifikasi saat ini.</p>
+                      </div>
                     ) : (
-                      notifications.slice(0, 5).map(n => (
+                      notifications.slice(0, 6).map(n => (
                         <div
                           key={n.id}
-                          onClick={() => onMarkNotificationRead(n.id)}
-                          className={`p-3 text-xs cursor-pointer hover:bg-slate-50 transition-colors flex gap-2.5 ${
-                            !n.isRead ? 'bg-blue-50/50' : ''
+                          className={`p-3 text-xs transition-colors flex items-start gap-2.5 ${
+                            !n.isRead ? 'bg-blue-50/60 font-medium' : 'hover:bg-slate-50'
                           }`}
                         >
-                          <div className="mt-0.5">
+                          <div className="mt-0.5 shrink-0">
                             {n.type === 'overdue' ? (
                               <AlertTriangle className="w-4 h-4 text-rose-500" />
                             ) : (
                               <ShieldCheck className="w-4 h-4 text-blue-500" />
                             )}
                           </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-slate-800">{n.title}</p>
-                            <p className="text-slate-600 mt-0.5 line-clamp-2">{n.message}</p>
-                            <p className="text-[10px] text-slate-400 mt-1">{n.timestamp} &bull; {n.channel}</p>
+                          <div
+                            className="flex-1 cursor-pointer"
+                            onClick={() => onMarkNotificationRead(n.id)}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="font-bold text-slate-800 text-xs">{n.title}</p>
+                              {!n.isRead && (
+                                <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-slate-600 text-[11px] mt-0.5 line-clamp-2 leading-snug">{n.message}</p>
+                            <p className="text-[10px] text-slate-400 mt-1 font-mono">{n.timestamp} &bull; {n.channel}</p>
                           </div>
+                          {onDeleteNotification && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteNotification(n.id);
+                              }}
+                              className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                              title="Hapus Notifikasi"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       ))
                     )}
                   </div>
 
+                  {/* Footer Link */}
                   <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
-                    <button
-                      onClick={() => {
-                        setIsNotifOpen(false);
-                        onOpenNotificationsModal();
-                      }}
-                      className="text-xs text-blue-600 font-semibold hover:underline"
-                    >
-                      
-                    </button>
+                    
                   </div>
                 </div>
               )}

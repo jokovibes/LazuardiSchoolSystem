@@ -192,9 +192,13 @@ CREATE TABLE IF NOT EXISTS public.transport_records (
   transport_mode TEXT NOT NULL,
   driver_name TEXT,
   vehicle_plate TEXT,
+  vehicle_photo_url TEXT,
   officer_name TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+-- Migration SQL for transport_records:
+-- ALTER TABLE public.transport_records ADD COLUMN IF NOT EXISTS vehicle_photo_url TEXT;
 
 -- 10. NOTIFICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.notifications (
@@ -460,7 +464,7 @@ export async function fetchAllDataFromSupabase() {
       actualReturnTime: ep.actual_return_time,
       purpose: ep.purpose,
       pickupBy: ep.pickup_by,
-      permitLetterUrl: ep.permit_letter_url,
+      permitLetterUrl: ep.permit_letter_url || undefined,
       officerName: ep.officer_name,
       status: ep.status,
       createdAt: ep.created_at
@@ -478,6 +482,7 @@ export async function fetchAllDataFromSupabase() {
       transportMode: tr.transport_mode,
       driverName: tr.driver_name,
       vehiclePlate: tr.vehicle_plate,
+      vehiclePhotoUrl: tr.vehicle_photo_url || undefined,
       officerName: tr.officer_name,
       createdAt: tr.created_at
     }));
@@ -688,6 +693,7 @@ export async function seedInitialDataToSupabase(
       transport_mode: tr.transportMode,
       driver_name: tr.driverName,
       vehicle_plate: tr.vehiclePlate,
+      vehicle_photo_url: tr.vehiclePhotoUrl || null,
       officer_name: tr.officerName,
       created_at: tr.createdAt
     })));
@@ -781,7 +787,7 @@ export async function dbInsertExitPermission(rec: ExitPermissionRecord) {
     actual_return_time: rec.actualReturnTime,
     purpose: rec.purpose,
     pickup_by: rec.pickupBy,
-    permit_letter_url: rec.permitLetterUrl,
+    permit_letter_url: rec.permitLetterUrl || null,
     officer_name: rec.officerName,
     status: rec.status,
     created_at: rec.createdAt
@@ -812,6 +818,7 @@ export async function dbInsertTransportRecord(rec: TransportRecord) {
     transport_mode: rec.transportMode,
     driver_name: rec.driverName,
     vehicle_plate: rec.vehiclePlate,
+    vehicle_photo_url: rec.vehiclePhotoUrl || null,
     officer_name: rec.officerName,
     created_at: rec.createdAt
   });

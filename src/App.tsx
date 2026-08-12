@@ -625,6 +625,9 @@ export default function App() {
         onLogout={handleLogout}
         notifications={notifications}
         onMarkNotificationRead={handleMarkNotificationRead}
+        onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+        onClearAllNotifications={handleClearAllNotifications}
+        onDeleteNotification={handleDeleteNotification}
         onOpenNotificationsModal={() => setActiveTab('notifications')}
         onToggleSidebar={() => setIsOpenMobileSidebar(!isOpenMobileSidebar)}
       />

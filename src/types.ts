@@ -124,6 +124,7 @@ export interface TransportRecord {
   transportMode: TransportMode;
   driverName?: string; // For online driver or pickup
   vehiclePlate?: string; // e.g. B 1234 XYZ
+  vehiclePhotoUrl?: string; // Foto kendaraan / driver / penjemput
   officerName: string;
   createdAt: string;
 }
