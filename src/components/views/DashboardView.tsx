@@ -232,12 +232,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   });
 
-  // Chart 2: Unit Breakdown from Supabase
-  const unitBreakdownData = units.map(u => ({
-    name: u.code,
-    TerlaluPagi: earlyArrivals.filter(r => (r.unitName || '').includes(u.code || '')).length,
-    Terlambat: lateArrivals.filter(r => (r.unitName || '').includes(u.code || '')).length,
-    IzinKeluar: exitPermissions.filter(r => (r.unitName || '').includes(u.code || '')).length,
+  // Chart 2: Unit Breakdown filtered by active date & class
+  const effectiveUnits = units.length > 0 ? units : [
+    { id: 'unit-sd', code: 'SD', name: 'SD Lazuardi Global', headmasterName: '', totalStudents: 0 },
+    { id: 'unit-smp', code: 'SMP', name: 'SMP Lazuardi Junior', headmasterName: '', totalStudents: 0 },
+    { id: 'unit-sma', code: 'SMA', name: 'SMA Lazuardi Senior High', headmasterName: '', totalStudents: 0 }
+  ];
+
+  const dateClassEarly = earlyArrivals.filter(r => 
+    (selectedClass === 'ALL' || r.className === selectedClass) &&
+    (selectedDate === '' || r.date === selectedDate)
+  );
+
+  const dateClassLate = lateArrivals.filter(r => 
+    (selectedClass === 'ALL' || r.className === selectedClass) &&
+    (selectedDate === '' || r.date === selectedDate)
+  );
+
+  const dateClassExit = exitPermissions.filter(r => 
+    (selectedClass === 'ALL' || r.className === selectedClass) &&
+    (selectedDate === '' || r.date === selectedDate)
+  );
+
+  const isRecordInUnit = (rUnitName: string | undefined, rClassName: string | undefined, unitCode: string, unitName: string) => {
+    const uCode = (unitCode || '').toLowerCase().trim();
+    const uName = (unitName || '').toLowerCase().trim();
+    const rUnit = (rUnitName || '').toLowerCase().trim();
+    const rClass = (rClassName || '').toLowerCase().trim();
+
+    if (!uCode && !uName) return false;
+    if (uCode && (rUnit.includes(uCode) || rClass.startsWith(uCode))) return true;
+    if (uName && rUnit.includes(uName)) return true;
+    return false;
+  };
+
+  const unitBreakdownData = effectiveUnits.map(u => ({
+    name: u.code || u.name,
+    TerlaluPagi: dateClassEarly.filter(r => isRecordInUnit(r.unitName, r.className, u.code, u.name)).length,
+    Terlambat: dateClassLate.filter(r => isRecordInUnit(r.unitName, r.className, u.code, u.name)).length,
+    IzinKeluar: dateClassExit.filter(r => isRecordInUnit(r.unitName, r.className, u.code, u.name)).length,
   }));
 
   // Chart 3: Real Transport Modes Distribution from Supabase
@@ -638,7 +671,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Breakdown Per Unit Bar Chart */}
         <div ref={chart3Ref} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <h3 className="font-bold text-slate-800 text-base mb-1">
-            Rekap Indikator Per Unit Sekolah (SD, SMP, SMA)
+            Rekap Indikator Per Unit Sekolah
           </h3>
           <p className="text-xs text-slate-500 mb-4">Jumlah presensi khusus per tingkat unit pendidikan.</p>
 

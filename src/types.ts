@@ -108,7 +108,7 @@ export interface ExitPermissionRecord {
   pickupBy: string; // e.g., Ayah, Ibu, Supir
   permitLetterUrl?: string; // Uploaded permit letter image
   officerName: string;
-  status: 'Belum Kembali' | 'Sudah Kembali';
+  status: 'Belum Kembali' | 'Sudah Kembali' | 'Langsung Pulang';
   createdAt: string;
 }
 

@@ -29,7 +29,7 @@ interface ExitPermissionViewProps {
   classes: StudentClass[];
   currentUser: User;
   onAddRecord: (record: Omit<ExitPermissionRecord, 'id' | 'createdAt'>) => void;
-  onUpdateStatus: (id: string, newStatus: 'Sudah Kembali', actualReturnTime: string) => void;
+  onUpdateStatus: (id: string, newStatus: 'Sudah Kembali' | 'Langsung Pulang', actualReturnTime?: string) => void;
   onDeleteRecord: (id: string) => void;
 }
 
@@ -47,6 +47,7 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [exitTime, setExitTime] = useState<string>('10:30');
   const [expectedReturnTime, setExpectedReturnTime] = useState<string>('12:00');
+  const [isDirectHome, setIsDirectHome] = useState<boolean>(false);
   const [purpose, setPurpose] = useState<string>('');
   const [pickupBy, setPickupBy] = useState<string>('');
   const [permitLetterUrl, setPermitLetterUrl] = useState<string>('');
@@ -99,7 +100,7 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
 
   // Filters
   const [filterUnit, setFilterUnit] = useState<string>('ALL');
-  const [filterStatus, setFilterStatus] = useState<'ALL' | 'Belum Kembali' | 'Sudah Kembali'>('ALL');
+  const [filterStatus, setFilterStatus] = useState<'ALL' | 'Belum Kembali' | 'Sudah Kembali' | 'Langsung Pulang'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const handleSelectFromScanner = (student: Student) => {
@@ -132,6 +133,9 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
+    const finalStatus = isDirectHome ? 'Langsung Pulang' : 'Belum Kembali';
+    const finalExpectedReturn = isDirectHome ? 'Langsung Pulang' : expectedReturnTime;
+    const finalActualReturn = isDirectHome ? '-' : undefined;
 
     onAddRecord({
       studentId: selectedStudent.id,
@@ -141,26 +145,32 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
       className: selectedStudent.className,
       date: todayStr,
       exitTime,
-      expectedReturnTime,
+      expectedReturnTime: finalExpectedReturn,
+      actualReturnTime: finalActualReturn,
       purpose,
       pickupBy,
       permitLetterUrl: permitLetterUrl || undefined,
       officerName: currentUser.name,
-      status: 'Belum Kembali'
+      status: finalStatus
     });
 
     setSelectedStudent(null);
     setPermitLetterUrl('');
     setPurpose('');
     setPickupBy('');
+    setIsDirectHome(false);
     stopCamera();
-    alert(`Surat izin keluar siswa ${selectedStudent.name} berhasil diterbitkan & dicatat!`);
+    alert(`Surat izin keluar siswa ${selectedStudent.name} (${finalStatus}) berhasil diterbitkan & dicatat!`);
   };
 
   const handleMarkReturned = (id: string) => {
     const now = new Date();
     const returnTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     onUpdateStatus(id, 'Sudah Kembali', returnTime);
+  };
+
+  const handleMarkDirectHome = (id: string) => {
+    onUpdateStatus(id, 'Langsung Pulang', '-');
   };
 
   const filteredRecords = exitPermissions.filter(r => {
@@ -264,6 +274,27 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
             </div>
           )}
 
+          {/* Option Checkbox for Langsung Pulang */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isDirectHome}
+                onChange={(e) => setIsDirectHome(e.target.checked)}
+                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+              />
+              <span className="text-xs font-bold text-slate-800">
+                Siswa Langsung Pulang (Tidak Kembali ke Sekolah Hari Ini)
+              </span>
+            </label>
+            <span className="text-[11px] text-slate-500 italic">
+              {isDirectHome 
+                ? 'Konfirmasi kembali bersifat opsional/tidak wajib (langsung dicatat selesai).'
+                : 'Siswa wajib dikonfirmasi kembali di pos keamanan.'
+              }
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">Jam Keluar</label>
@@ -277,14 +308,25 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Target Jam Kembali</label>
-              <input
-                type="time"
-                value={expectedReturnTime}
-                onChange={(e) => setExpectedReturnTime(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-blue-600"
-                required
-              />
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Target Jam Kembali {isDirectHome ? '(Opsional)' : ''}
+              </label>
+              {isDirectHome ? (
+                <input
+                  type="text"
+                  value="Langsung Pulang"
+                  disabled
+                  className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-500 cursor-not-allowed"
+                />
+              ) : (
+                <input
+                  type="time"
+                  value={expectedReturnTime}
+                  onChange={(e) => setExpectedReturnTime(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-bold text-blue-600"
+                  required={!isDirectHome}
+                />
+              )}
             </div>
 
             <div>
@@ -460,18 +502,19 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
               <option value="ALL">Semua Status</option>
               <option value="Belum Kembali">Belum Kembali Only</option>
               <option value="Sudah Kembali">Sudah Kembali Only</option>
+              <option value="Langsung Pulang">Langsung Pulang Only</option>
             </select>
 
             <button
               onClick={handleExportExcel}
-              className="p-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1"
+              className="p-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               Excel
             </button>
             <button
               onClick={handleExportPdf}
-              className="p-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1"
+              className="p-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" />
               PDF
@@ -510,7 +553,13 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
                       <p className="text-[10px] text-slate-500">{record.unitName}</p>
                     </td>
                     <td className="p-3 font-bold text-slate-800">{record.exitTime} WIB</td>
-                    <td className="p-3 font-bold text-blue-600">{record.expectedReturnTime} WIB</td>
+                    <td className="p-3 font-bold text-blue-600">
+                      {record.expectedReturnTime === 'Langsung Pulang' ? (
+                        <span className="text-slate-500 font-semibold italic text-[11px]">Langsung Pulang</span>
+                      ) : (
+                        `${record.expectedReturnTime} WIB`
+                      )}
+                    </td>
                     <td className="p-3 text-slate-700 max-w-xs">
                       <p className="truncate font-medium">{record.purpose}</p>
                       <p className="text-[10px] text-slate-500">Penjemput: {record.pickupBy}</p>
@@ -535,6 +584,11 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
                           <AlertTriangle className="w-3 h-3" />
                           Belum Kembali
                         </span>
+                      ) : record.status === 'Langsung Pulang' ? (
+                        <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-300 flex items-center gap-1 w-max">
+                          <LogOut className="w-3 h-3" />
+                          Langsung Pulang
+                        </span>
                       ) : (
                         <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 w-max">
                           <CheckCircle2 className="w-3 h-3" />
@@ -543,19 +597,45 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
                       )}
                     </td>
                     <td className="p-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
                         {record.status === 'Belum Kembali' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleMarkReturned(record.id)}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                              title="Konfirmasi bahwa siswa sudah kembali ke sekolah"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              Konfirmasi Kembali
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMarkDirectHome(record.id)}
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-[10px] font-semibold flex items-center gap-1 cursor-pointer"
+                              title="Set siswa langsung pulang tanpa kembali"
+                            >
+                              <LogOut className="w-3 h-3 text-blue-600" />
+                              Langsung Pulang
+                            </button>
+                          </>
+                        )}
+                        {record.status === 'Langsung Pulang' && (
                           <button
+                            type="button"
                             onClick={() => handleMarkReturned(record.id)}
-                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-xs"
+                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-300 rounded-lg text-[10px] font-medium flex items-center gap-1 cursor-pointer"
+                            title="Konfirmasi jika siswa ternyata kembali ke sekolah"
                           >
-                            <CheckCircle2 className="w-3 h-3" />
-                            Konfirmasi Kembali
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            Konfirmasi Kembali (Opsional)
                           </button>
                         )}
                         <button
+                          type="button"
                           onClick={() => onDeleteRecord(record.id)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 cursor-pointer"
+                          title="Hapus Rekaman"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

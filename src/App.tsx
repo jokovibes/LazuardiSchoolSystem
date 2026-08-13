@@ -347,10 +347,11 @@ export default function App() {
     addAuditLog('Pencatatan Izin Keluar', 'Izin Keluar', `Penerbitan surat izin keluar ${record.studentName} (${record.purpose})`);
   };
 
-  const handleUpdateExitStatus = (id: string, newStatus: 'Sudah Kembali', actualReturnTime: string) => {
-    setExitPermissions(prev => prev.map(r => r.id === id ? { ...r, status: newStatus, actualReturnTime } : r));
-    dbUpdateExitPermissionStatus(id, newStatus, actualReturnTime).catch(err => console.error('Supabase error:', err));
-    addAuditLog('Update Status Izin Keluar', 'Izin Keluar', `Konfirmasi siswa kembali ID ${id} pada jam ${actualReturnTime}`);
+  const handleUpdateExitStatus = (id: string, newStatus: 'Sudah Kembali' | 'Langsung Pulang', actualReturnTime?: string) => {
+    const returnTime = actualReturnTime || (newStatus === 'Sudah Kembali' ? new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-');
+    setExitPermissions(prev => prev.map(r => r.id === id ? { ...r, status: newStatus, actualReturnTime: returnTime } : r));
+    dbUpdateExitPermissionStatus(id, newStatus, returnTime).catch(err => console.error('Supabase error:', err));
+    addAuditLog('Update Status Izin Keluar', 'Izin Keluar', `Update status izin keluar ID ${id} menjadi ${newStatus}`);
   };
 
   const handleDeleteExitPermission = (id: string) => {
