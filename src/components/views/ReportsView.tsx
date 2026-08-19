@@ -55,6 +55,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [selectedClass, setSelectedClass] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  const isLateDismissal = (timeStr?: string) => {
+    if (!timeStr) return false;
+    const cleanTime = timeStr.replace(/[^\d:]/g, '').trim();
+    const parts = cleanTime.split(':');
+    if (parts.length >= 2) {
+      const hours = parseInt(parts[0], 10);
+      const mins = parseInt(parts[1], 10);
+      if (!isNaN(hours) && !isNaN(mins)) {
+        return hours > 16 || (hours === 16 && mins > 0);
+      }
+    }
+    return cleanTime > '16:00';
+  };
+
   const isUnitMatch = (rUnitName?: string, rClassName?: string, unitFilter: string = 'ALL') => {
     if (unitFilter === 'ALL') return true;
     const u = (rUnitName || '').toLowerCase();
@@ -634,7 +648,17 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <td className="p-3 font-bold text-slate-800">{r.studentName}</td>
                   <td className="p-3">{r.className} ({r.unitName})</td>
                   <td className="p-3">{r.date}</td>
-                  <td className="p-3 font-bold text-sky-600">{r.dismissalTime} WIB</td>
+                  <td className="p-3">
+                    {isLateDismissal(r.dismissalTime) ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-bold text-xs">
+                        <Clock className="w-3.5 h-3.5 text-rose-600" />
+                        <span>{r.dismissalTime} WIB</span>
+                        <span className="text-[9px] font-extrabold bg-rose-600 text-white px-1.5 py-0.5 rounded-sm">&gt;16.00</span>
+                      </span>
+                    ) : (
+                      <span className="font-bold text-sky-600">{r.dismissalTime} WIB</span>
+                    )}
+                  </td>
                   <td className="p-3 text-slate-600">{r.transportMode} {r.vehiclePlate ? `(${r.vehiclePlate})` : ''}</td>
                   <td className="p-3 text-slate-500">{r.officerName}</td>
                 </tr>

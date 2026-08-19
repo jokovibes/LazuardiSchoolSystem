@@ -17,7 +17,9 @@ import {
   Upload,
   X,
   Eye,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { Student, TransportRecord, TransportMode, SchoolUnit, StudentClass, User } from '../../types';
 import { FaceScannerModal } from '../FaceScannerModal';
@@ -164,6 +166,20 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
     stopCamera();
 
     alert(`Moda transportasi kepulangan siswa ${selectedStudent.name} berhasil dicatat!`);
+  };
+
+  const isLateDismissal = (timeStr?: string) => {
+    if (!timeStr) return false;
+    const cleanTime = timeStr.replace(/[^\d:]/g, '').trim();
+    const parts = cleanTime.split(':');
+    if (parts.length >= 2) {
+      const hours = parseInt(parts[0], 10);
+      const mins = parseInt(parts[1], 10);
+      if (!isNaN(hours) && !isNaN(mins)) {
+        return hours > 16 || (hours === 16 && mins > 0);
+      }
+    }
+    return cleanTime > '16:00';
   };
 
   const filteredRecords = transportRecords.filter(r => {
@@ -553,7 +569,17 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
                       <p className="font-semibold">{record.className}</p>
                       <p className="text-[10px] text-slate-500">{record.unitName}</p>
                     </td>
-                    <td className="p-3 font-bold text-sky-700">{record.dismissalTime} WIB</td>
+                    <td className="p-3">
+                      {isLateDismissal(record.dismissalTime) ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-bold text-xs">
+                          <Clock className="w-3.5 h-3.5 text-rose-600" />
+                          <span>{record.dismissalTime} WIB</span>
+                          <span className="text-[9px] font-extrabold bg-rose-600 text-white px-1.5 py-0.5 rounded-sm">&gt;16.00</span>
+                        </span>
+                      ) : (
+                        <span className="font-bold text-sky-700">{record.dismissalTime} WIB</span>
+                      )}
+                    </td>
                     <td className="p-3 font-semibold text-slate-800">
                       <span className="bg-sky-50 text-sky-800 px-2.5 py-1 rounded-md border border-sky-200">
                         {record.transportMode}
