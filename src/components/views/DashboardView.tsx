@@ -98,39 +98,121 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return latestInDb > today ? latestInDb : (allDates.includes(today) ? today : latestInDb);
   };
 
+  const [dateFilterMode, setDateFilterMode] = useState<'single' | 'range'>('single');
   const [selectedDate, setSelectedDate] = useState<string>(getTodayString());
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     const latest = getLatestDate();
     if (latest) {
       setSelectedDate(latest);
+      if (!startDate || !endDate) {
+        const parts = latest.split('-');
+        if (parts.length === 3) {
+          setStartDate(`${parts[0]}-${parts[1]}-01`);
+          setEndDate(latest);
+        }
+      }
     }
   }, [earlyArrivals, lateArrivals, exitPermissions, transportRecords]);
 
-  // Filtering records by unit, class, and date
+  // Helper to check if a record's date falls within active filter (single or range)
+  const isRecordInDateFilter = (recordDate?: string) => {
+    if (!recordDate) return false;
+    if (dateFilterMode === 'single') {
+      return selectedDate === '' || recordDate === selectedDate;
+    } else {
+      if (startDate && endDate) {
+        return recordDate >= startDate && recordDate <= endDate;
+      }
+      if (startDate) return recordDate >= startDate;
+      if (endDate) return recordDate <= endDate;
+      return true;
+    }
+  };
+
+  // Quick preset dates handler
+  const handleSetPreset = (preset: 'today' | 'this_month' | 'last_7_days' | 'last_30_days') => {
+    const today = getTodayString();
+    const d = new Date();
+    if (preset === 'today') {
+      setDateFilterMode('single');
+      setSelectedDate(today);
+    } else if (preset === 'this_month') {
+      setDateFilterMode('range');
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      setStartDate(`${year}-${month}-01`);
+      setEndDate(today);
+    } else if (preset === 'last_7_days') {
+      setDateFilterMode('range');
+      const past = new Date();
+      past.setDate(d.getDate() - 6);
+      const pastStr = past.toISOString().split('T')[0];
+      setStartDate(pastStr);
+      setEndDate(today);
+    } else if (preset === 'last_30_days') {
+      setDateFilterMode('range');
+      const past = new Date();
+      past.setDate(d.getDate() - 29);
+      const pastStr = past.toISOString().split('T')[0];
+      setStartDate(pastStr);
+      setEndDate(today);
+    }
+  };
+
+  // Helper to format date in Indonesian e.g. "22 September 2026"
+  const formatDateIndo = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const months = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        const d = parseInt(parts[2], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const y = parts[0];
+        return `${d} ${months[m] || ''} ${y}`;
+      }
+    } catch {
+      // fallback
+    }
+    return dateStr;
+  };
+
+  const activePeriodText = dateFilterMode === 'range'
+    ? (startDate && endDate 
+        ? `${formatDateIndo(startDate)} s/d ${formatDateIndo(endDate)}`
+        : (startDate ? `Mulai ${formatDateIndo(startDate)}` : (endDate ? `Sampai ${formatDateIndo(endDate)}` : 'Semua Tanggal')))
+    : formatDateIndo(selectedDate);
+
+  // Filtering records by unit, class, and date (supporting single date or custom range)
   const filteredEarly = earlyArrivals.filter(r => 
     (selectedUnit === 'ALL' || (r.unitName || '').includes(selectedUnit)) &&
     (selectedClass === 'ALL' || r.className === selectedClass) &&
-    (selectedDate === '' || r.date === selectedDate)
+    isRecordInDateFilter(r.date)
   );
 
   const filteredLate = lateArrivals.filter(r => 
     (selectedUnit === 'ALL' || (r.unitName || '').includes(selectedUnit)) &&
     (selectedClass === 'ALL' || r.className === selectedClass) &&
-    (selectedDate === '' || r.date === selectedDate)
+    isRecordInDateFilter(r.date)
   );
 
   const filteredExit = exitPermissions.filter(r => 
     (selectedUnit === 'ALL' || (r.unitName || '').includes(selectedUnit)) &&
     (selectedClass === 'ALL' || r.className === selectedClass) &&
-    (selectedDate === '' || r.date === selectedDate)
+    isRecordInDateFilter(r.date)
   );
 
   const filteredTransport = transportRecords.filter(r => 
     (selectedUnit === 'ALL' || (r.unitName || '').includes(selectedUnit)) &&
     (selectedClass === 'ALL' || r.className === selectedClass) &&
-    (selectedDate === '' || r.date === selectedDate)
+    isRecordInDateFilter(r.date)
   );
 
   // Widget metric totals
@@ -213,10 +295,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return sortedDates.slice(-7);
   };
 
+  const getDatesBetween = (startStr: string, endStr: string) => {
+    if (!startStr || !endStr) return [];
+    const result: string[] = [];
+    const curr = new Date(startStr);
+    const end = new Date(endStr);
+    
+    // Safety guard to avoid browser freeze: max 62 days
+    let iterations = 0;
+    while (curr <= end && iterations < 62) {
+      const y = curr.getFullYear();
+      const m = String(curr.getMonth() + 1).padStart(2, '0');
+      const d = String(curr.getDate()).padStart(2, '0');
+      result.push(`${y}-${m}-${d}`);
+      curr.setDate(curr.getDate() + 1);
+      iterations++;
+    }
+    return result;
+  };
+
   const recentDates = getRecentDates();
 
+  const trendDates = dateFilterMode === 'range' && startDate && endDate
+    ? getDatesBetween(startDate, endDate)
+    : recentDates;
+
   // Chart 1: Real Daily Trend Data from Supabase
-  const dailyTrendData = recentDates.map(dateStr => {
+  const dailyTrendData = trendDates.map(dateStr => {
     const TerlaluPagi = unitClassEarly.filter(r => r.date === dateStr).length;
     const Terlambat = unitClassLate.filter(r => r.date === dateStr).length;
     const IzinKeluar = unitClassExit.filter(r => r.date === dateStr).length;
@@ -241,17 +346,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const dateClassEarly = earlyArrivals.filter(r => 
     (selectedClass === 'ALL' || r.className === selectedClass) &&
-    (selectedDate === '' || r.date === selectedDate)
+    isRecordInDateFilter(r.date)
   );
 
   const dateClassLate = lateArrivals.filter(r => 
     (selectedClass === 'ALL' || r.className === selectedClass) &&
-    (selectedDate === '' || r.date === selectedDate)
+    isRecordInDateFilter(r.date)
   );
 
   const dateClassExit = exitPermissions.filter(r => 
     (selectedClass === 'ALL' || r.className === selectedClass) &&
-    (selectedDate === '' || r.date === selectedDate)
+    isRecordInDateFilter(r.date)
   );
 
   const isRecordInUnit = (rUnitName: string | undefined, rClassName: string | undefined, unitCode: string, unitName: string) => {
@@ -285,6 +390,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalTransportCount = transportPieData.reduce((acc, item) => acc + item.value, 0);
 
   // Export Summary
+  const dateFileLabel = dateFilterMode === 'range' 
+    ? `${startDate || 'awal'}_sd_${endDate || 'akhir'}`
+    : selectedDate;
+
   const handleExportDashboardExcel = () => {
     const headers = ['Kategori Indikator', 'Jumlah Siswa (Orang)', 'Status / Catatan'];
     const rows = [
@@ -298,7 +407,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ['Pulang Bus Sekolah', totalBusSekolah, 'Armada Bus Lazuardi'],
       ['Pulang Dijemput Orang Tua', totalDijemput, 'Izin Penjemput Resmi']
     ];
-    exportToExcel('Ringkasan_Dashboard', headers, rows, `Ringkasan_Dashboard_Presensi_${selectedDate}`);
+    exportToExcel('Ringkasan_Dashboard', headers, rows, `Ringkasan_Dashboard_Presensi_${dateFileLabel}`);
   };
 
   const handleExportDashboardPdf = async () => {
@@ -318,14 +427,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       ];
 
       const chartElements = [chart1Ref.current, chart2Ref.current, chart3Ref.current];
-      const filterInfo = `Unit: ${selectedUnit === 'ALL' ? 'Semua Unit' : selectedUnit} | Kelas: ${selectedClass === 'ALL' ? 'Semua Kelas' : selectedClass} | Tanggal: ${selectedDate}`;
+      const filterInfo = `Unit: ${selectedUnit === 'ALL' ? 'Semua Unit' : selectedUnit} | Kelas: ${selectedClass === 'ALL' ? 'Semua Kelas' : selectedClass} | Periode: ${activePeriodText}`;
 
       await exportDashboardWithChartsToPdf(
         'Dashboard Analitik Presensi & Pergerakan Siswa',
         headers,
         rows,
         chartElements,
-        `Dashboard_Analitik_Grafik_${selectedDate}`,
+        `Dashboard_Analitik_Grafik_${dateFileLabel}`,
         filterInfo
       );
     } catch (err) {
@@ -340,19 +449,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-6">
       
       {/* Top Section Banner & Global Filters */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-blue-600" />
-            Dashboard Analitik Presensi & Pergerakan Siswa
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Ringkasan terpadu aktivitas kedatangan, keterlambatan, izin keluar, dan moda transportasi seluruh unit.
-          </p>
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Building2 className="w-6 h-6 text-blue-600" />
+              Dashboard Analitik Presensi & Pergerakan Siswa
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Ringkasan terpadu aktivitas kedatangan, keterlambatan, izin keluar, dan moda transportasi seluruh unit.
+            </p>
+          </div>
+
+          {/* Export & Share Action Buttons */}
+          <div className="flex items-center gap-2 self-start lg:self-center">
+            <button
+              onClick={handleExportDashboardExcel}
+              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              title="Export Excel"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Excel
+            </button>
+            <button
+              onClick={handleExportDashboardPdf}
+              disabled={isExportingPdf}
+              className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+              title="Export PDF dengan Grafik"
+            >
+              <Download className={`w-3.5 h-3.5 ${isExportingPdf ? 'animate-bounce' : ''}`} />
+              {isExportingPdf ? 'Mengekspor...' : 'PDF'}
+            </button>
+            <button
+              onClick={() => shareRekapToUnit('SEMUA UNIT', 'Dashboard Utama', totalEarly + totalLate + totalExit, [
+                `Terlalu Pagi: ${totalEarly} Siswa`,
+                `Terlambat: ${totalLate} Siswa`,
+                `Izin Keluar: ${totalExit} Siswa`,
+                `Transport Online: ${totalOnlineTransport} Siswa`
+              ])}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              title="Bagikan Rekap ke Unit"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              Bagikan
+            </button>
+          </div>
         </div>
 
         {/* Global Filter Bar */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2.5">
           {/* Unit Filter */}
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-xl text-xs">
             <GraduationCap className="w-4 h-4 text-slate-500" />
@@ -383,57 +528,136 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </select>
           </div>
 
-          {/* Date Picker */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-xl text-xs">
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer"
-            />
+          {/* Mode Toggle: Tanggal Tunggal vs Rentang Tanggal */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+            <button
+              type="button"
+              onClick={() => setDateFilterMode('single')}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${
+                dateFilterMode === 'single'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Tanggal Tunggal
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDateFilterMode('range');
+                if (!startDate || !endDate) {
+                  const latest = getLatestDate();
+                  const parts = latest.split('-');
+                  if (parts.length === 3) {
+                    setStartDate(`${parts[0]}-${parts[1]}-01`);
+                    setEndDate(latest);
+                  }
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+                dateFilterMode === 'range'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              Rentang Tanggal (Kustom)
+            </button>
           </div>
 
-          <button
-            onClick={() => setSelectedDate(getLatestDate())}
-            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1"
-            title="Tampilkan Data Tanggal Terbaru"
-          >
-            Terbaru
-          </button>
+          {/* Single Date Picker */}
+          {dateFilterMode === 'single' ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-xl text-xs">
+                <Calendar className="w-4 h-4 text-slate-500" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer"
+                />
+              </div>
 
-          {/* Export & Share Action Buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleExportDashboardExcel}
-              className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
-              title="Export Excel"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Excel
-            </button>
-            <button
-              onClick={handleExportDashboardPdf}
-              disabled={isExportingPdf}
-              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
-              title="Export PDF dengan Grafik"
-            >
-              <Download className={`w-3.5 h-3.5 ${isExportingPdf ? 'animate-bounce' : ''}`} />
-              {isExportingPdf ? 'Mengekspor...' : 'PDF'}
-            </button>
-            <button
-              onClick={() => shareRekapToUnit('SEMUA UNIT', 'Dashboard Utama', totalEarly + totalLate + totalExit, [
-                `Terlalu Pagi: ${totalEarly} Siswa`,
-                `Terlambat: ${totalLate} Siswa`,
-                `Izin Keluar: ${totalExit} Siswa`,
-                `Transport Online: ${totalOnlineTransport} Siswa`
-              ])}
-              className="p-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
-              title="Bagikan Rekap ke Unit"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              Bagikan
-            </button>
+              <button
+                onClick={() => setSelectedDate(getLatestDate())}
+                className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold transition-colors shrink-0 flex items-center gap-1"
+                title="Tampilkan Data Tanggal Terbaru"
+              >
+                Terbaru
+              </button>
+            </div>
+          ) : (
+            /* Custom Range Date Pickers */
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-xl text-xs">
+                <span className="text-slate-400 text-[11px] font-medium">Dari:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer"
+                />
+              </div>
+
+              <span className="text-xs text-slate-400 font-semibold">s/d</span>
+
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-xl text-xs">
+                <span className="text-slate-400 text-[11px] font-medium">Sampai:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-transparent font-medium text-slate-700 focus:outline-none cursor-pointer"
+                />
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleSetPreset('this_month')}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
+                  title="Filter Bulan Ini"
+                >
+                  Bulan Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetPreset('last_7_days')}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
+                  title="Filter 7 Hari Terakhir"
+                >
+                  7 Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSetPreset('last_30_days')}
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition-colors"
+                  title="Filter 30 Hari Terakhir"
+                >
+                  30 Hari
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Active Filter Period Badge */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-blue-50/60 border border-blue-100 px-4 py-2 rounded-xl text-xs">
+          <div className="flex items-center gap-2 text-blue-900">
+            <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              Periode Aktif: <strong className="font-bold text-blue-950">{activePeriodText}</strong>
+              {dateFilterMode === 'range' && (
+                <span className="ml-2 text-[10px] bg-blue-200/80 text-blue-800 font-extrabold px-2 py-0.5 rounded-full">
+                  Rentang Kustom
+                </span>
+              )}
+            </span>
+          </div>
+
+          <div className="text-slate-500 text-[11px]">
+            Total Catatan Terfilter: <strong className="text-slate-800 font-bold">{totalEarly + totalLate + totalExit + filteredTransport.length}</strong> siswa
           </div>
         </div>
       </div>
@@ -575,7 +799,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <TrendingUp className="w-5 h-5 text-blue-600" />
                 Grafik Tren Aktivitas Harian Presensi
               </h3>
-              <p className="text-xs text-slate-500">Perbandingan volume kedatangan dini, keterlambatan, dan izin keluar pekan ini.</p>
+              <p className="text-xs text-slate-500">
+                {dateFilterMode === 'range'
+                  ? `Tren pergerakan harian presensi periode ${activePeriodText}`
+                  : 'Perbandingan volume kedatangan dini, keterlambatan, dan izin keluar pekan ini.'}
+              </p>
             </div>
           </div>
 
@@ -673,7 +901,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h3 className="font-bold text-slate-800 text-base mb-1">
             Rekap Indikator Per Unit Sekolah
           </h3>
-          <p className="text-xs text-slate-500 mb-4">Jumlah presensi khusus per tingkat unit pendidikan.</p>
+          <p className="text-xs text-slate-500 mb-4">
+            {dateFilterMode === 'range'
+              ? `Akumulasi presensi khusus per unit untuk periode ${activePeriodText}.`
+              : 'Jumlah presensi khusus per tingkat unit pendidikan.'}
+          </p>
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -703,11 +935,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Live Update
               </span>
             </div>
-            <p className="text-xs text-slate-500 mb-3">Siswa yang terdata terlambat pada hari ini:</p>
+            <p className="text-xs text-slate-500 mb-3">
+              {dateFilterMode === 'range'
+                ? `Siswa yang terdata terlambat pada periode terpilih (${activePeriodText}):`
+                : `Siswa yang terdata terlambat pada hari ini (${formatDateIndo(selectedDate)}):`}
+            </p>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {filteredLate.length === 0 ? (
-                <p className="text-center py-6 text-xs text-slate-400">Belum ada catatan keterlambatan untuk tanggal ini ({selectedDate}).</p>
+                <p className="text-center py-6 text-xs text-slate-400">Belum ada catatan keterlambatan untuk periode ini ({activePeriodText}).</p>
               ) : (
                 filteredLate.map(item => (
                   <div key={item.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
@@ -722,9 +958,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
 
                     <div className="text-right">
-                      <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
-                        {item.arrivalTime} WIB
-                      </span>
+                      <div className="flex items-center justify-end gap-1">
+                        {dateFilterMode === 'range' && item.date && (
+                          <span className="text-[10px] font-medium text-slate-500 bg-slate-200/70 px-1.5 py-0.5 rounded">
+                            {item.date.slice(5)}
+                          </span>
+                        )}
+                        <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                          {item.arrivalTime} WIB
+                        </span>
+                      </div>
                       <p className="text-[10px] text-slate-500 mt-0.5 max-w-[140px] truncate">{item.lateReason}</p>
                     </div>
                   </div>

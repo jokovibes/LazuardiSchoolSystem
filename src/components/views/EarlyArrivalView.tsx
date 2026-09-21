@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   Trash2,
   FileSpreadsheet,
-  FileText
+  FileText,
+  ArrowDownUp
 } from 'lucide-react';
 import { Student, EarlyArrivalRecord, SchoolUnit, StudentClass, User } from '../../types';
 import { FaceScannerModal } from '../FaceScannerModal';
@@ -88,29 +89,73 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
     alert(`Data kedatangan dini siswa ${selectedStudent.name} berhasil disimpan!`);
   };
 
-  // Filter records
-  const filteredRecords = earlyArrivals.filter(r => {
-    const matchUnit = filterUnit === 'ALL' || (r.unitName || '').includes(filterUnit);
-    const matchClass = filterClass === 'ALL' || r.className === filterClass;
-    const matchQuery = 
-      (r.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (r.nis || '').includes(searchQuery) ||
-      (r.assemblyLocation || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchUnit && matchClass && matchQuery;
-  });
+  // Helper to format date in Indonesian (e.g., "20 Sep 2026")
+  const formatDateIndo = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const months = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        const d = parseInt(parts[2], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const y = parts[0];
+        return `${d} ${months[m] || ''} ${y}`;
+      }
+    } catch {
+      // fallback
+    }
+    return dateStr;
+  };
+
+  // Filter & sort records: newest data at the very top
+  const filteredRecords = [...earlyArrivals]
+    .filter(r => {
+      const matchUnit = filterUnit === 'ALL' || (r.unitName || '').includes(filterUnit);
+      const matchClass = filterClass === 'ALL' || r.className === filterClass;
+      const matchQuery = 
+        (r.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.nis || '').includes(searchQuery) ||
+        (r.assemblyLocation || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.date || '').includes(searchQuery);
+      return matchUnit && matchClass && matchQuery;
+    })
+    .sort((a, b) => {
+      // 1. Sort by date descending (YYYY-MM-DD)
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA);
+      }
+      // 2. Sort by arrivalTime descending (HH:mm)
+      const timeA = a.arrivalTime || '';
+      const timeB = b.arrivalTime || '';
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      // 3. Fallback to createdAt descending
+      const createdA = a.createdAt || '';
+      const createdB = b.createdAt || '';
+      if (createdA !== createdB) {
+        return createdB.localeCompare(createdA);
+      }
+      return (b.id || '').localeCompare(a.id || '');
+    });
 
   const handleExportExcel = () => {
-    const headers = ['NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Tanggal', 'Jam Tiba', 'Lokasi Berkumpul', 'Petugas', 'Keterangan'];
+    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Jam Tiba', 'Lokasi Berkumpul', 'Petugas', 'Keterangan'];
     const rows = filteredRecords.map(r => [
-      r.nis, r.studentName, r.className, r.unitName, r.date, r.arrivalTime, r.assemblyLocation, r.officerName, r.notes
+      r.date, r.nis, r.studentName, r.className, r.unitName, r.arrivalTime, r.assemblyLocation, r.officerName, r.notes
     ]);
     exportToExcel('Siswa_Datang_Terlalu_Pagi', headers, rows, `Kedatangan_Dini_${new Date().toISOString().split('T')[0]}`);
   };
 
   const handleExportPdf = () => {
-    const headers = ['NIS', 'Nama Siswa', 'Kelas', 'Jam Tiba', 'Lokasi Berkumpul', 'Petugas'];
+    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Jam Tiba', 'Lokasi Berkumpul', 'Petugas'];
     const rows = filteredRecords.map(r => [
-      r.nis, r.studentName, r.className, r.arrivalTime, r.assemblyLocation, r.officerName
+      r.date, r.nis, r.studentName, r.className, r.arrivalTime, r.assemblyLocation, r.officerName
     ]);
     exportToPdf('Laporan Siswa Datang Terlalu Pagi', headers, rows, `Kedatangan_Dini_${new Date().toISOString().split('T')[0]}`);
   };
@@ -311,10 +356,16 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
         {/* Table Header Controls */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h3 className="font-bold text-slate-800 text-base">
-              Rekap Data Kedatangan Dini Siswa
-            </h3>
-            <p className="text-xs text-slate-500">Filter berdasarkan Unit, Kelas, dan Periode Rekap</p>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-800 text-base">
+                Rekap Data Kedatangan Dini Siswa
+              </h3>
+              <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <ArrowDownUp className="w-3 h-3" />
+                Terbaru di Paling Atas
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">Filter berdasarkan Unit, Kelas, dan Pencarian Siswa / Lokasi</p>
           </div>
 
           {/* Filter Bar */}
@@ -385,6 +436,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <th className="p-3">Tanggal</th>
                 <th className="p-3">Siswa & NIS</th>
                 <th className="p-3">Kelas / Unit</th>
                 <th className="p-3">Jam Tiba</th>
@@ -398,13 +450,20 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-500">
+                  <td colSpan={9} className="p-8 text-center text-slate-500">
                     Belum ada data kedatangan terlalu pagi yang sesuai dengan filter.
                   </td>
                 </tr>
               ) : (
                 filteredRecords.map(record => (
                   <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-3 text-slate-700 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                        <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span>{formatDateIndo(record.date)}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono pl-5">{record.date}</p>
+                    </td>
                     <td className="p-3 font-semibold text-slate-800">
                       <p>{record.studentName}</p>
                       <p className="text-[10px] text-slate-500 font-mono">NIS: {record.nis}</p>
@@ -413,7 +472,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
                       <p className="font-semibold">{record.className}</p>
                       <p className="text-[10px] text-slate-500">{record.unitName}</p>
                     </td>
-                    <td className="p-3 font-bold text-amber-600">
+                    <td className="p-3 font-bold text-amber-600 whitespace-nowrap">
                       {record.arrivalTime} WIB
                     </td>
                     <td className="p-3 text-slate-700 font-medium">
@@ -424,7 +483,7 @@ export const EarlyArrivalView: React.FC<EarlyArrivalViewProps> = ({
                     <td className="p-3 text-slate-600">{record.officerName}</td>
                     <td className="p-3 text-slate-600 max-w-xs truncate">{record.notes}</td>
                     <td className="p-3">
-                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 whitespace-nowrap">
                         {record.status}
                       </span>
                     </td>

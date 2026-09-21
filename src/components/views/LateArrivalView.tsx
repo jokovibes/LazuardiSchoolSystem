@@ -13,7 +13,9 @@ import {
   FileSpreadsheet, 
   FileText,
   Image as ImageIcon,
-  UserX
+  UserX,
+  Calendar,
+  ArrowDownUp
 } from 'lucide-react';
 import { Student, LateArrivalRecord, SchoolUnit, StudentClass, User } from '../../types';
 import { FaceScannerModal } from '../FaceScannerModal';
@@ -40,6 +42,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
 }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [recordDate, setRecordDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [arrivalTime, setArrivalTime] = useState<string>('07:25');
   const [lateReason, setLateReason] = useState<string>('');
   const [photoProofUrl, setPhotoProofUrl] = useState<string>('');
@@ -77,6 +80,27 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
     }
   };
 
+  // Helper to format date in Indonesian (e.g., "20 Sep 2026")
+  const formatDateIndo = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const months = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        const d = parseInt(parts[2], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const y = parts[0];
+        return `${d} ${months[m] || ''} ${y}`;
+      }
+    } catch {
+      // fallback
+    }
+    return dateStr;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) {
@@ -92,7 +116,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
       studentName: selectedStudent.name,
       unitName: selectedStudent.unitName,
       className: selectedStudent.className,
-      date: todayStr,
+      date: recordDate || todayStr,
       arrivalTime: arrivalTime,
       lateReason: lateReason,
       officerName: currentUser.name,
@@ -106,15 +130,39 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
     alert(`Pencatatan keterlambatan siswa ${selectedStudent.name} berhasil disimpan! Notifikasi otomatis terikirim.`);
   };
 
-  const filteredRecords = lateArrivals.filter(r => {
-    const matchUnit = filterUnit === 'ALL' || (r.unitName || '').includes(filterUnit);
-    const matchClass = filterClass === 'ALL' || r.className === filterClass;
-    const matchQuery = 
-      (r.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (r.nis || '').includes(searchQuery) ||
-      (r.lateReason || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchUnit && matchClass && matchQuery;
-  });
+  // Filter & sort records: newest data at the very top
+  const filteredRecords = [...lateArrivals]
+    .filter(r => {
+      const matchUnit = filterUnit === 'ALL' || (r.unitName || '').includes(filterUnit);
+      const matchClass = filterClass === 'ALL' || r.className === filterClass;
+      const matchQuery = 
+        (r.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.nis || '').includes(searchQuery) ||
+        (r.lateReason || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.date || '').includes(searchQuery);
+      return matchUnit && matchClass && matchQuery;
+    })
+    .sort((a, b) => {
+      // 1. Sort by date descending (YYYY-MM-DD)
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA);
+      }
+      // 2. Sort by arrivalTime descending (HH:mm)
+      const timeA = a.arrivalTime || '';
+      const timeB = b.arrivalTime || '';
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      // 3. Fallback to createdAt descending
+      const createdA = a.createdAt || '';
+      const createdB = b.createdAt || '';
+      if (createdA !== createdB) {
+        return createdB.localeCompare(createdA);
+      }
+      return (b.id || '').localeCompare(a.id || '');
+    });
 
   // Calculate Top Late Students
   const lateFrequencyMap: Record<string, { name: string; count: number; className: string; unitName: string }> = {};
@@ -131,17 +179,17 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
     .slice(0, 5);
 
   const handleExportExcel = () => {
-    const headers = ['NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Tanggal', 'Jam Tiba', 'Alasan Terlambat', 'Petugas', 'Status'];
+    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Jam Tiba', 'Alasan Terlambat', 'Petugas', 'Status'];
     const rows = filteredRecords.map(r => [
-      r.nis, r.studentName, r.className, r.unitName, r.date, r.arrivalTime, r.lateReason, r.officerName, r.attendanceStatus
+      r.date, r.nis, r.studentName, r.className, r.unitName, r.arrivalTime, r.lateReason, r.officerName, r.attendanceStatus
     ]);
     exportToExcel('Siswa_Terlambat_Datang', headers, rows, `Keterlambatan_${new Date().toISOString().split('T')[0]}`);
   };
 
   const handleExportPdf = () => {
-    const headers = ['NIS', 'Nama Siswa', 'Kelas', 'Jam Tiba', 'Alasan Terlambat', 'Petugas'];
+    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Jam Tiba', 'Alasan Terlambat', 'Petugas'];
     const rows = filteredRecords.map(r => [
-      r.nis, r.studentName, r.className, r.arrivalTime, r.lateReason, r.officerName
+      r.date, r.nis, r.studentName, r.className, r.arrivalTime, r.lateReason, r.officerName
     ]);
     exportToPdf('Laporan Keterlambatan Siswa', headers, rows, `Keterlambatan_${new Date().toISOString().split('T')[0]}`);
   };
@@ -223,7 +271,20 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
           )}
 
           {/* Form Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Tanggal
+              </label>
+              <input
+                type="date"
+                value={recordDate}
+                onChange={(e) => setRecordDate(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-rose-500"
+                required
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Jam Kedatangan (WIB)
@@ -330,11 +391,28 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
         <div className="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-bold text-slate-800 text-base">Rekap Data Keterlambatan</h3>
-              <p className="text-xs text-slate-500">Daftar siswa terlambat yang terdata hari ini</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-800 text-base">Rekap Data Keterlambatan</h3>
+                <span className="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <ArrowDownUp className="w-3 h-3" />
+                  Terbaru di Paling Atas
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Daftar siswa terlambat yang terdata (diurutkan dari yang paling baru)</p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari siswa/alasan/tgl..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-1 focus:ring-rose-500 w-36 sm:w-44"
+                />
+              </div>
+
               <select
                 value={filterUnit}
                 onChange={(e) => setFilterUnit(e.target.value)}
@@ -348,14 +426,14 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
 
               <button
                 onClick={handleExportExcel}
-                className="p-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1"
+                className="p-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-semibold flex items-center gap-1 hover:bg-emerald-100 transition-colors"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 Excel
               </button>
               <button
                 onClick={handleExportPdf}
-                className="p-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1"
+                className="p-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1 hover:bg-blue-100 transition-colors"
               >
                 <FileText className="w-3.5 h-3.5" />
                 PDF
@@ -367,6 +445,7 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                  <th className="p-3">Tanggal</th>
                   <th className="p-3">Siswa & NIS</th>
                   <th className="p-3">Kelas / Unit</th>
                   <th className="p-3">Jam Tiba</th>
@@ -378,11 +457,18 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-6 text-center text-slate-500">Tidak ada catatan keterlambatan.</td>
+                    <td colSpan={7} className="p-6 text-center text-slate-500">Tidak ada catatan keterlambatan.</td>
                   </tr>
                 ) : (
                   filteredRecords.map(record => (
-                    <tr key={record.id} className="hover:bg-slate-50">
+                    <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 text-slate-700 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                          <Calendar className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                          <span>{formatDateIndo(record.date)}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-mono pl-5">{record.date}</p>
+                      </td>
                       <td className="p-3 font-semibold text-slate-800">
                         <p>{record.studentName}</p>
                         <p className="text-[10px] text-slate-500 font-mono">NIS: {record.nis}</p>
@@ -391,13 +477,14 @@ export const LateArrivalView: React.FC<LateArrivalViewProps> = ({
                         <p className="font-semibold">{record.className}</p>
                         <p className="text-[10px] text-slate-500">{record.unitName}</p>
                       </td>
-                      <td className="p-3 font-bold text-rose-600">{record.arrivalTime} WIB</td>
+                      <td className="p-3 font-bold text-rose-600 whitespace-nowrap">{record.arrivalTime} WIB</td>
                       <td className="p-3 text-slate-600 max-w-xs truncate">{record.lateReason}</td>
                       <td className="p-3 text-slate-600">{record.officerName}</td>
                       <td className="p-3 text-right">
                         <button
                           onClick={() => onDeleteRecord(record.id)}
                           className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                          title="Hapus Catatan"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
