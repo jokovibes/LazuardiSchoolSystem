@@ -14,7 +14,8 @@ import {
   Sparkles,
   CheckCheck,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  LogIn
 } from 'lucide-react';
 import { User as UserType, RoleType, NotificationItem } from '../types';
 
@@ -30,6 +31,7 @@ interface NavbarProps {
   onDeleteNotification?: (id: string) => void;
   onOpenNotificationsModal: () => void;
   onToggleSidebar: () => void;
+  onOpenLoginModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -43,7 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onClearAllNotifications,
   onDeleteNotification,
   onOpenNotificationsModal,
-  onToggleSidebar
+  onToggleSidebar,
+  onOpenLoginModal
 }) => {
   const [time, setTime] = useState<string>('');
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
@@ -243,11 +246,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Quick Admin/Staff Login Button when in Security Mode */}
+            {currentUser?.role === 'Security' && onOpenLoginModal && (
+              <button
+                onClick={onOpenLoginModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/40 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                title="Masuk sebagai Administrator, Guru, atau Kepala Unit"
+              >
+                <LogIn className="w-3.5 h-3.5 text-amber-300" />
+                <span className="hidden sm:inline">Login Admin / Staf</span>
+                <span className="sm:hidden">Login</span>
+              </button>
+            )}
+
             {/* Role / User Persona Dropdown Switcher */}
             <div className="relative">
               <button
                 onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
-                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 border border-white/20 px-3 py-1.5 rounded-xl transition-all"
+                className="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 border border-white/20 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
               >
                 <img
                   src={currentUser?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250'}
@@ -259,7 +275,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {currentUser?.name || 'User'}
                   </p>
                   <span className={`inline-block text-[10px] font-bold px-1.5 py-0.2 rounded border ${getRoleBadgeStyle(currentUser?.role || 'Super Admin')}`}>
-                    {currentUser?.role || 'Super Admin'}
+                    {currentUser?.role === 'Security' ? 'Security (Bebas Login)' : (currentUser?.role || 'Super Admin')}
                   </span>
                 </div>
                 <ChevronDown className="w-4 h-4 text-blue-200" />
@@ -278,24 +294,64 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <p className="text-xs font-bold text-slate-800 truncate">{currentUser?.name || 'User'}</p>
                       <p className="text-[10px] text-slate-500 truncate">{currentUser?.email || currentUser?.username || ''}</p>
                       <span className={`inline-block text-[9px] font-bold px-1.5 py-0.2 mt-1 rounded border ${getRoleBadgeStyle(currentUser?.role || 'Super Admin')}`}>
-                        {currentUser?.role || 'Super Admin'}
+                        {currentUser?.role === 'Security' ? 'Security (Tanpa Login)' : (currentUser?.role || 'Super Admin')}
                       </span>
                     </div>
                   </div>
 
                   <div className="p-2.5 bg-slate-50 space-y-2">
-                    <button
-                      onClick={() => {
-                        setIsRoleMenuOpen(false);
-                        onLogout();
-                      }}
-                      className="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer border border-rose-200/60"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      Keluar / Logout
-                    </button>
+                    {currentUser?.role === 'Security' ? (
+                      <>
+                        <div className="p-2.5 bg-emerald-50 border border-emerald-200/80 rounded-xl text-emerald-900 text-xs">
+                          <p className="font-bold flex items-center gap-1.5 text-emerald-800">
+                            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                            Akses Security Bebas Login
+                          </p>
+                          <p className="text-[11px] text-emerald-700 mt-0.5 leading-snug">
+                            Siap mencatat presensi kedatangan, keterlambatan, izin keluar & kepulangan di gerbang.
+                          </p>
+                        </div>
+                        {onOpenLoginModal && (
+                          <button
+                            onClick={() => {
+                              setIsRoleMenuOpen(false);
+                              onOpenLoginModal();
+                            }}
+                            className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm"
+                          >
+                            <LogIn className="w-3.5 h-3.5" />
+                            Masuk Akun Admin / Guru
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setIsRoleMenuOpen(false);
+                            onLogout();
+                          }}
+                          className="w-full py-2 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer border border-rose-200/60"
+                        >
+                          <LogOut className="w-3.5 h-3.5" />
+                          Keluar ke Akses Security
+                        </button>
+                        {onOpenLoginModal && (
+                          <button
+                            onClick={() => {
+                              setIsRoleMenuOpen(false);
+                              onOpenLoginModal();
+                            }}
+                            className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                          >
+                            <UserCheck className="w-3.5 h-3.5" />
+                            Ganti Akun Staf / Admin
+                          </button>
+                        )}
+                      </>
+                    )}
                     <div className="flex items-center justify-between text-[10px] text-slate-500 px-2 pt-0.5">
-                      <span>Hak Akses Terverifikasi</span>
+                      <span>Status Sistem: Aktif</span>
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     </div>
                   </div>
@@ -303,14 +359,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Direct Quick Logout Button */}
-            <button
-              onClick={onLogout}
-              className="p-2 rounded-xl text-blue-200 hover:text-rose-200 hover:bg-white/10 transition-colors"
-              title="Keluar / Logout dari Sistem"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            {/* Direct Quick Logout / Switch to Security Button */}
+            {currentUser?.role !== 'Security' && (
+              <button
+                onClick={onLogout}
+                className="p-2 rounded-xl text-blue-200 hover:text-rose-200 hover:bg-white/10 transition-colors cursor-pointer"
+                title="Keluar dari akun admin & kembali ke Akses Security"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            )}
 
           </div>
 

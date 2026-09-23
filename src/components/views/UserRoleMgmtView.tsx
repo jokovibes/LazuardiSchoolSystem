@@ -154,8 +154,8 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar_url TEXT;`;
     },
     {
       id: 'mod-5',
-      module: '5. Face Recognition Datasets',
-      roles: { 'Super Admin': 'Full', 'Admin': 'Full', 'Security': 'Read', 'Guru': 'None', 'Kepala Unit': 'None', 'Manajemen': 'None' }
+      module: '5. Face Recognition & Daftar Siswa',
+      roles: { 'Super Admin': 'Full', 'Admin': 'Full', 'Security': 'None', 'Guru': 'Read', 'Kepala Unit': 'Read', 'Manajemen': 'Read' }
     },
     {
       id: 'mod-6',

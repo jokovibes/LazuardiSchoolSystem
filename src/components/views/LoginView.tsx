@@ -15,7 +15,8 @@ import {
   ChevronRight,
   Database,
   Building2,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 import { User, RoleType, SchoolUnit } from '../../types';
 
@@ -23,12 +24,16 @@ interface LoginViewProps {
   availableUsers: User[];
   units: SchoolUnit[];
   onLoginSuccess: (user: User) => void;
+  onContinueAsSecurity?: () => void;
+  onCancel?: () => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({
   availableUsers,
   units,
-  onLoginSuccess
+  onLoginSuccess,
+  onContinueAsSecurity,
+  onCancel
 }) => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -38,6 +43,23 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+  const handleEnterAsSecurity = () => {
+    if (onContinueAsSecurity) {
+      onContinueAsSecurity();
+    } else {
+      const secUser = availableUsers.find(u => u.email === 'security@lazuardi.sch.id' || u.role === 'Security') || {
+        id: 'usr-3',
+        name: 'Security Lazuardi',
+        username: 'security',
+        email: 'security@lazuardi.sch.id',
+        role: 'Security' as RoleType,
+        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+        status: 'Active'
+      };
+      onLoginSuccess(secUser);
+    }
+  };
+
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -46,6 +68,22 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setTimeout(() => {
       const trimmedIdentifier = identifier.trim().toLowerCase();
       const trimmedPassword = password.trim();
+
+      // Quick Security bypass if username 'security' or email 'security@lazuardi.sch.id' is used
+      if (trimmedIdentifier === 'security' || trimmedIdentifier === 'security@lazuardi.sch.id') {
+        const secUser = availableUsers.find(u => u.email === 'security@lazuardi.sch.id' || u.role === 'Security') || {
+          id: 'usr-3',
+          name: 'Security Lazuardi',
+          username: 'security',
+          email: 'security@lazuardi.sch.id',
+          role: 'Security' as RoleType,
+          avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+          status: 'Active'
+        };
+        setIsLoading(false);
+        onLoginSuccess(secUser);
+        return;
+      }
 
       // Find matching user by username or email from Supabase users list
       const matched = availableUsers.find(
@@ -62,6 +100,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
       if (matched.status === 'Inactive') {
         setErrorMsg('Akun pengguna ini nonaktif. Silakan hubungi Administrator.');
         setIsLoading(false);
+        return;
+      }
+
+      // If user is Security role, allow login without password
+      if (matched.role === 'Security') {
+        setIsLoading(false);
+        onLoginSuccess(matched);
         return;
       }
 
@@ -156,14 +201,56 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="space-y-6">
             
             {/* Form Header */}
-            <div>
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                <LogIn className="w-5 h-5 text-blue-600" />
-                Masuk ke Akun Anda
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Masukkan nama pengguna / e-mail dan kata sandi yang telah terdaftar.
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                  <LogIn className="w-5 h-5 text-blue-600" />
+                  Masuk Akun Staf / Admin
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Masukkan nama pengguna / e-mail dan kata sandi untuk akun pengajar, kepala unit, atau admin.
+                </p>
+              </div>
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
+                  title="Tutup / Kembali ke Akses Security"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* Special Banner: Security Free Access (No Login Required) */}
+            <div className="bg-emerald-50 border border-emerald-300/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-xs shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-emerald-950">
+                      Hak Akses Security Tidak Perlu Login
+                    </p>
+                    <span className="text-[10px] bg-emerald-200 text-emerald-900 font-extrabold px-1.5 py-0.5 rounded">
+                      Bebas Akses
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-tight mt-0.5">
+                    Petugas satpam pos gerbang dapat langsung membuka dan mencatat seluruh modul presensi tanpa username & password.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleEnterAsSecurity}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold shrink-0 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer transition-all"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                Lanjut sebagai Security
+              </button>
             </div>
 
             {errorMsg && (

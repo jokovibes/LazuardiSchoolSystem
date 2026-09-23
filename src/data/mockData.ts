@@ -28,7 +28,18 @@ export const DEFAULT_FALLBACK_USER: User = {
   status: 'Active'
 };
 
-export const initialUsers: User[] = [DEFAULT_FALLBACK_USER];
+export const DEFAULT_SECURITY_USER: User = {
+  id: 'usr-3',
+  name: 'Security Lazuardi',
+  username: 'security',
+  email: 'security@lazuardi.sch.id',
+  password: '',
+  role: 'Security',
+  avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+  status: 'Active'
+};
+
+export const initialUsers: User[] = [DEFAULT_SECURITY_USER, DEFAULT_FALLBACK_USER];
 
 export const initialStudents: Student[] = [];
 

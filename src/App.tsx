@@ -9,6 +9,7 @@ import {
   initialClasses, 
   initialUsers, 
   DEFAULT_FALLBACK_USER,
+  DEFAULT_SECURITY_USER,
   initialStudents, 
   initialEarlyArrivals, 
   initialLateArrivals, 
@@ -50,6 +51,7 @@ import { NotificationsView } from './components/views/NotificationsView';
 import { DatabaseErdView } from './components/views/DatabaseErdView';
 import { SettingsView } from './components/views/SettingsView';
 import { LoginView } from './components/views/LoginView';
+import { Lock, LogIn, ShieldAlert } from 'lucide-react';
 
 import {
   fetchAllDataFromSupabase,
@@ -88,18 +90,24 @@ import {
 } from './lib/supabase';
 
 export default function App() {
-  // Auth State - Default to Login page on initial open
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
-    return sessionStorage.getItem('lazuardi_auth_logged_in') === 'true';
+  // Auth State: Hak akses Security tidak perlu login. Default langsung membuka akun "Security Lazuardi" (security@lazuardi.sch.id).
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    const savedUserId = sessionStorage.getItem('lazuardi_auth_user_id');
+    const isExplicitlyLoggedIn = sessionStorage.getItem('lazuardi_auth_logged_in') === 'true';
+    if (isExplicitlyLoggedIn && savedUserId) {
+      const matched = initialUsers.find(u => u.id === savedUserId);
+      if (matched) return matched;
+    }
+    // Default akun saat membuka aplikasi: "Security Lazuardi" (security@lazuardi.sch.id)
+    const secUser = initialUsers.find(u => u.email === 'security@lazuardi.sch.id' || u.role === 'Security');
+    return secUser || DEFAULT_SECURITY_USER;
   });
+
+  // Modal Login jika admin/staf ingin beralih ke akun berprivilese khusus
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // Global State
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    const savedUserId = sessionStorage.getItem('lazuardi_auth_user_id');
-    const matched = initialUsers.find(u => u.id === savedUserId);
-    return matched || initialUsers[0] || DEFAULT_FALLBACK_USER;
-  });
   const [users, setUsers] = useState<User[]>(initialUsers);
   
   const [units, setUnits] = useState<SchoolUnit[]>(initialUnits);
@@ -164,17 +172,41 @@ export default function App() {
               dbUpdateUser(updated).catch(console.error);
               return updated;
             }
+            if (u.role === 'Security' || u.username === 'security' || u.id === 'usr-3' || u.email?.includes('security')) {
+              if (u.name !== 'Security Lazuardi' || u.email !== 'security@lazuardi.sch.id') {
+                const updated: User = {
+                  ...u,
+                  name: 'Security Lazuardi',
+                  username: 'security',
+                  email: 'security@lazuardi.sch.id'
+                };
+                dbUpdateUser(updated).catch(console.error);
+                return updated;
+              }
+            }
             return u;
           });
+
+          // Ensure Security Lazuardi exists in users list
+          let secUser = sanitizedUsers.find(u => u.email === 'security@lazuardi.sch.id' || u.role === 'Security');
+          if (!secUser) {
+            secUser = DEFAULT_SECURITY_USER;
+            sanitizedUsers.unshift(DEFAULT_SECURITY_USER);
+            dbInsertUser(DEFAULT_SECURITY_USER).catch(console.error);
+          }
           setUsers(sanitizedUsers);
 
           // Sync active session user with loaded Supabase user record
           const savedUserId = sessionStorage.getItem('lazuardi_auth_user_id');
-          if (savedUserId) {
+          const isExplicitlyLoggedIn = sessionStorage.getItem('lazuardi_auth_logged_in') === 'true';
+          if (isExplicitlyLoggedIn && savedUserId) {
             const activeUser = sanitizedUsers.find(u => u.id === savedUserId);
             if (activeUser) {
               setCurrentUser(activeUser);
             }
+          } else {
+            // Default saat membuka aplikasi: "Security Lazuardi" (security@lazuardi.sch.id)
+            setCurrentUser(secUser);
           }
         }
 
@@ -589,28 +621,39 @@ export default function App() {
   // Login & Logout Handlers
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
-    setIsLoggedIn(true);
-    sessionStorage.setItem('lazuardi_auth_logged_in', 'true');
-    sessionStorage.setItem('lazuardi_auth_user_id', user.id);
+    if (user.role !== 'Security') {
+      sessionStorage.setItem('lazuardi_auth_logged_in', 'true');
+      sessionStorage.setItem('lazuardi_auth_user_id', user.id);
+    } else {
+      sessionStorage.removeItem('lazuardi_auth_logged_in');
+      sessionStorage.removeItem('lazuardi_auth_user_id');
+    }
+    setIsLoginModalOpen(false);
     addAuditLog('Login Sistem', 'Autentikasi', `Pengguna ${user.name} (${user.role}) berhasil masuk ke sistem`);
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
     sessionStorage.removeItem('lazuardi_auth_logged_in');
     sessionStorage.removeItem('lazuardi_auth_user_id');
-    addAuditLog('Logout Sistem', 'Autentikasi', `Pengguna ${currentUser?.name || 'User'} keluar dari sistem`);
+    const secUser = users.find(u => u.email === 'security@lazuardi.sch.id' || u.role === 'Security') || DEFAULT_SECURITY_USER;
+    setCurrentUser(secUser);
+    setIsLoginModalOpen(false);
+    if (activeTab === 'face-mgmt') {
+      setActiveTab('dashboard');
+    }
+    addAuditLog('Logout Sistem', 'Autentikasi', `Pengguna ${currentUser?.name || 'User'} keluar dari sesi staf, beralih ke akun default Security Lazuardi (security@lazuardi.sch.id)`);
   };
 
-  if (!isLoggedIn) {
-    return (
-      <LoginView
-        availableUsers={users}
-        units={units}
-        onLoginSuccess={handleLoginSuccess}
-      />
-    );
-  }
+  const handleContinueAsSecurity = () => {
+    sessionStorage.removeItem('lazuardi_auth_logged_in');
+    sessionStorage.removeItem('lazuardi_auth_user_id');
+    const secUser = users.find(u => u.email === 'security@lazuardi.sch.id' || u.role === 'Security') || DEFAULT_SECURITY_USER;
+    setCurrentUser(secUser);
+    setIsLoginModalOpen(false);
+    if (activeTab === 'face-mgmt') {
+      setActiveTab('dashboard');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
@@ -624,6 +667,7 @@ export default function App() {
           addAuditLog('Ganti Persona User', 'Autentikasi', `Beralih persona ke ${user.name} (${user.role})`);
         }}
         onLogout={handleLogout}
+        onOpenLoginModal={() => setIsLoginModalOpen(true)}
         notifications={notifications}
         onMarkNotificationRead={handleMarkNotificationRead}
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
@@ -642,6 +686,7 @@ export default function App() {
           userRole={currentUser.role}
           isOpenMobile={isOpenMobileSidebar}
           onCloseMobile={() => setIsOpenMobileSidebar(false)}
+          onRequestLogin={() => setIsLoginModalOpen(true)}
         />
 
         {/* Main View Area */}
@@ -721,18 +766,47 @@ export default function App() {
           )}
 
           {activeTab === 'face-mgmt' && (
-            <StudentFaceMgmtView
-              students={students}
-              faceProfiles={faceProfiles}
-              units={units}
-              classes={classes}
-              onAddStudent={handleAddStudent}
-              onBulkAddStudents={handleBulkAddStudents}
-              onEditStudent={handleEditStudent}
-              onDeleteStudent={handleDeleteStudent}
-              onRegisterFace={handleRegisterFace}
-              onDeleteFaceData={handleDeleteFaceData}
-            />
+            currentUser.role === 'Security' ? (
+              <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 text-center max-w-lg mx-auto mt-12 shadow-sm space-y-5">
+                <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center mx-auto border border-amber-200/80 shadow-xs">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 tracking-tight">Akses Daftar Siswa Terkunci</h3>
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                    Hanya pengguna yang <strong>telah login</strong> (Guru, Kepala Unit, Admin, atau Manajemen) yang dapat melihat dan mengelola direktori siswa.
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={() => setIsLoginModalOpen(true)}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 cursor-pointer transition-all"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Login untuk Melihat Siswa
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('dashboard')}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs cursor-pointer transition-colors"
+                  >
+                    Kembali ke Dashboard
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <StudentFaceMgmtView
+                students={students}
+                faceProfiles={faceProfiles}
+                units={units}
+                classes={classes}
+                onAddStudent={handleAddStudent}
+                onBulkAddStudents={handleBulkAddStudents}
+                onEditStudent={handleEditStudent}
+                onDeleteStudent={handleDeleteStudent}
+                onRegisterFace={handleRegisterFace}
+                onDeleteFaceData={handleDeleteFaceData}
+              />
+            )
           )}
 
           {activeTab === 'users-rbac' && (
@@ -787,6 +861,21 @@ export default function App() {
         </main>
 
       </div>
+
+      {/* Modal Login Staf / Admin jika diperlukan beralih peran */}
+      {isLoginModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative w-full max-w-5xl my-6">
+            <LoginView
+              availableUsers={users}
+              units={units}
+              onLoginSuccess={handleLoginSuccess}
+              onContinueAsSecurity={handleContinueAsSecurity}
+              onCancel={() => setIsLoginModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -12,7 +12,8 @@ import {
   Database, 
   Settings, 
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Lock
 } from 'lucide-react';
 import { RoleType } from '../types';
 
@@ -33,6 +34,7 @@ interface SidebarProps {
   userRole: RoleType;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
+  onRequestLogin?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -40,7 +42,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   userRole,
   isOpenMobile,
-  onCloseMobile
+  onCloseMobile,
+  onRequestLogin
 }) => {
   const menuItems: {
     id: ActiveTab;
@@ -96,7 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'face-mgmt',
       label: 'Daftar Siswa',
       icon: Users,
-      allowedRoles: ['Super Admin', 'Admin', 'Security'],
+      allowedRoles: ['Super Admin', 'Admin', 'Guru', 'Kepala Unit', 'Manajemen'],
       category: 'SISTEM & AKUNTABILITAS'
     },
     {
@@ -150,17 +153,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                   if (!isAllowed) {
                     return (
-                      <div
+                      <button
                         key={item.id}
-                        className="flex items-center justify-between px-3 py-2 text-xs text-blue-200/30 rounded-lg cursor-not-allowed select-none"
-                        title={`Akses dibatasi untuk role: ${userRole}`}
+                        type="button"
+                        onClick={() => {
+                          if (userRole === 'Security' && onRequestLogin) {
+                            onRequestLogin();
+                            onCloseMobile();
+                          }
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-xs rounded-lg transition-colors text-left ${
+                          userRole === 'Security' && onRequestLogin
+                            ? 'text-blue-200/40 hover:text-amber-200 hover:bg-white/5 cursor-pointer group'
+                            : 'text-blue-200/30 cursor-not-allowed select-none'
+                        }`}
+                        title={userRole === 'Security' ? `Menu ini membutuhkan hak akses Staf/Admin. Klik untuk login.` : `Akses dibatasi untuk role: ${userRole}`}
                       >
                         <div className="flex items-center gap-3">
-                          <item.icon className="w-4 h-4 text-blue-300/30" />
+                          <item.icon className={`w-4 h-4 ${userRole === 'Security' && onRequestLogin ? 'text-blue-300/40 group-hover:text-amber-300' : 'text-blue-300/30'}`} />
                           <span>{item.label}</span>
                         </div>
-                        <ShieldAlert className="w-3.5 h-3.5 text-blue-300/30" />
-                      </div>
+                        {userRole === 'Security' && onRequestLogin ? (
+                          <span className="flex items-center gap-1 text-[10px] text-amber-300/60 group-hover:text-amber-300 font-semibold">
+                            <Lock className="w-3 h-3" />
+                            Login
+                          </span>
+                        ) : (
+                          <ShieldAlert className="w-3.5 h-3.5 text-blue-300/30" />
+                        )}
+                      </button>
                     );
                   }
 
