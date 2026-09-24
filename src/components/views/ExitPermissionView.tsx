@@ -16,11 +16,13 @@ import {
   UserCheck,
   FileCheck2,
   Trash2,
-  ImageIcon
+  ImageIcon,
+  Calendar
 } from 'lucide-react';
 import { Student, ExitPermissionRecord, SchoolUnit, StudentClass, User } from '../../types';
 import { FaceScannerModal } from '../FaceScannerModal';
 import { exportToExcel, exportToPdf, shareRekapToUnit } from '../../utils/exporter';
+import { dbFetchExitPermissionLetter } from '../../lib/supabase';
 
 interface ExitPermissionViewProps {
   students: Student[];
@@ -52,6 +54,34 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
   const [pickupBy, setPickupBy] = useState<string>('');
   const [permitLetterUrl, setPermitLetterUrl] = useState<string>('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [loadingLetterId, setLoadingLetterId] = useState<string | null>(null);
+
+  // Compress image before saving to database to maintain high speed and avoid payload timeouts
+  const compressImage = (dataUrl: string, maxWidth = 800, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
 
   // Camera & Photo States for Surat Izin
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
@@ -83,16 +113,23 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
     setIsCameraActive(false);
   };
 
-  const capturePhotoFromCamera = () => {
+  const capturePhotoFromCamera = async () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    const maxWidth = 800;
+    let width = video.videoWidth || 640;
+    let height = video.videoHeight || 480;
+    if (width > maxWidth) {
+      height = Math.round((height * maxWidth) / width);
+      width = maxWidth;
+    }
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       setPermitLetterUrl(dataUrl);
       stopCamera();
     }
@@ -118,10 +155,39 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPermitLetterUrl(reader.result as string);
+      reader.onloadend = async () => {
+        const raw = reader.result as string;
+        try {
+          const compressed = await compressImage(raw, 800, 0.75);
+          setPermitLetterUrl(compressed);
+        } catch {
+          setPermitLetterUrl(raw);
+        }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePreviewLetter = async (record: ExitPermissionRecord) => {
+    if (record.permitLetterUrl) {
+      setPreviewImage(record.permitLetterUrl);
+      return;
+    }
+
+    setLoadingLetterId(record.id);
+    try {
+      const letterUrl = await dbFetchExitPermissionLetter(record.id);
+      if (letterUrl) {
+        record.permitLetterUrl = letterUrl;
+        setPreviewImage(letterUrl);
+      } else {
+        alert('Dokumen surat izin tidak ditemukan di database atau belum diunggah.');
+      }
+    } catch (err) {
+      console.error('Gagal mengambil surat izin:', err);
+      alert('Terjadi kesalahan saat mengambil dokumen surat izin.');
+    } finally {
+      setLoadingLetterId(null);
     }
   };
 
@@ -150,6 +216,7 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
       purpose,
       pickupBy,
       permitLetterUrl: permitLetterUrl || undefined,
+      hasPermitLetter: Boolean(permitLetterUrl),
       officerName: currentUser.name,
       status: finalStatus
     });
@@ -173,30 +240,70 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
     onUpdateStatus(id, 'Langsung Pulang', '-');
   };
 
-  const filteredRecords = exitPermissions.filter(r => {
-    const matchUnit = filterUnit === 'ALL' || (r.unitName || '').includes(filterUnit);
-    const matchStatus = filterStatus === 'ALL' || r.status === filterStatus;
-    const matchQuery = 
-      (r.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (r.nis || '').includes(searchQuery) ||
-      (r.purpose || '').toLowerCase().includes(searchQuery.toLowerCase());
-    return matchUnit && matchStatus && matchQuery;
-  });
+  const formatDateIndo = (dateStr: string) => {
+    if (!dateStr) return '-';
+    try {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const year = parts[0];
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const day = parts[2];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        if (monthIdx >= 0 && monthIdx < 12) {
+          return `${day} ${months[monthIdx]} ${year}`;
+        }
+      }
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+    } catch {
+      // fallback
+    }
+    return dateStr;
+  };
+
+  const filteredRecords = exitPermissions
+    .filter(r => {
+      const matchUnit = filterUnit === 'ALL' || (r.unitName || '').includes(filterUnit);
+      const matchStatus = filterStatus === 'ALL' || r.status === filterStatus;
+      const matchQuery = 
+        (r.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.nis || '').includes(searchQuery) ||
+        (r.purpose || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.date || '').includes(searchQuery);
+      return matchUnit && matchStatus && matchQuery;
+    })
+    .sort((a, b) => {
+      // Urutkan berdasarkan tanggal & waktu terbaru (descending)
+      const dateA = a.date || (a.createdAt ? a.createdAt.split(' ')[0] : '');
+      const dateB = b.date || (b.createdAt ? b.createdAt.split(' ')[0] : '');
+      if (dateA !== dateB) {
+        return dateB.localeCompare(dateA);
+      }
+      // Jika tanggal sama, bandingkan waktu keluar / createdAt
+      const timeA = a.exitTime || (a.createdAt ? a.createdAt.split(' ')[1] : '');
+      const timeB = b.exitTime || (b.createdAt ? b.createdAt.split(' ')[1] : '');
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
 
   const overdueCount = exitPermissions.filter(r => r.status === 'Belum Kembali').length;
 
   const handleExportExcel = () => {
-    const headers = ['NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Jam Keluar', 'Jam Estimasi Kembali', 'Jam Aktual Kembali', 'Keperluan', 'Penjemput', 'Status'];
+    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Jam Keluar', 'Jam Estimasi Kembali', 'Jam Aktual Kembali', 'Keperluan', 'Penjemput', 'Status'];
     const rows = filteredRecords.map(r => [
-      r.nis, r.studentName, r.className, r.unitName, r.exitTime, r.expectedReturnTime, r.actualReturnTime || '-', r.purpose, r.pickupBy, r.status
+      r.date || '-', r.nis, r.studentName, r.className, r.unitName, r.exitTime, r.expectedReturnTime, r.actualReturnTime || '-', r.purpose, r.pickupBy, r.status
     ]);
     exportToExcel('Siswa_Izin_Keluar', headers, rows, `Izin_Keluar_${new Date().toISOString().split('T')[0]}`);
   };
 
   const handleExportPdf = () => {
-    const headers = ['NIS', 'Nama Siswa', 'Kelas', 'Jam Keluar', 'Target Kembali', 'Keperluan', 'Status'];
+    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Jam Keluar', 'Target Kembali', 'Keperluan', 'Status'];
     const rows = filteredRecords.map(r => [
-      r.nis, r.studentName, r.className, r.exitTime, r.expectedReturnTime, r.purpose, r.status
+      r.date || '-', r.nis, r.studentName, r.className, r.exitTime, r.expectedReturnTime, r.purpose, r.status
     ]);
     exportToPdf('Laporan Izin Keluar Sekolah', headers, rows, `Izin_Keluar_${new Date().toISOString().split('T')[0]}`);
   };
@@ -489,7 +596,12 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="font-bold text-slate-800 text-base">Riwayat & Status Izin Keluar Siswa</h3>
+            <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+              Riwayat & Status Izin Keluar Siswa
+              <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2.5 py-0.5 rounded-full">
+                {filteredRecords.length} Data
+              </span>
+            </h3>
             <p className="text-xs text-slate-500">Monitor status kepulangan kembali siswa ke lingkungan sekolah</p>
           </div>
 
@@ -526,6 +638,7 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <th className="p-3">Tanggal</th>
                 <th className="p-3">Siswa & NIS</th>
                 <th className="p-3">Kelas / Unit</th>
                 <th className="p-3">Jam Keluar</th>
@@ -539,11 +652,18 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-slate-500">Belum ada riwayat izin keluar.</td>
+                  <td colSpan={9} className="p-6 text-center text-slate-500">Belum ada riwayat izin keluar.</td>
                 </tr>
               ) : (
                 filteredRecords.map(record => (
                   <tr key={record.id} className="hover:bg-slate-50">
+                    <td className="p-3 text-slate-700 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                        <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                        <span>{formatDateIndo(record.date)}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-mono pl-5">{record.date}</p>
+                    </td>
                     <td className="p-3 font-semibold text-slate-800">
                       <p>{record.studentName}</p>
                       <p className="text-[10px] text-slate-500 font-mono">NIS: {record.nis}</p>
@@ -565,13 +685,18 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
                       <p className="text-[10px] text-slate-500">Penjemput: {record.pickupBy}</p>
                     </td>
                     <td className="p-3">
-                      {record.permitLetterUrl ? (
+                      {(record.hasPermitLetter || record.permitLetterUrl) ? (
                         <button
                           type="button"
-                          onClick={() => setPreviewImage(record.permitLetterUrl!)}
-                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 border border-slate-300 cursor-pointer"
+                          onClick={() => handlePreviewLetter(record)}
+                          disabled={loadingLetterId === record.id}
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-semibold flex items-center gap-1 border border-slate-300 cursor-pointer disabled:opacity-60"
                         >
-                          <Eye className="w-3 h-3 text-blue-600" />
+                          {loadingLetterId === record.id ? (
+                            <span className="animate-spin rounded-full h-3 w-3 border-2 border-blue-600 border-t-transparent" />
+                          ) : (
+                            <Eye className="w-3 h-3 text-blue-600" />
+                          )}
                           Preview Surat
                         </button>
                       ) : (

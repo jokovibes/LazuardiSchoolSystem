@@ -336,6 +336,7 @@ export async function fetchAllDataFromSupabase() {
       earlyArrivalsRes,
       lateArrivalsRes,
       exitPermissionsRes,
+      exitPermissionsLetterIdsRes,
       transportRecordsRes,
       notificationsRes,
       auditLogsRes,
@@ -348,7 +349,12 @@ export async function fetchAllDataFromSupabase() {
       supabase.from('face_profiles').select('*'),
       supabase.from('early_arrivals').select('*').order('created_at', { ascending: false }),
       supabase.from('late_arrivals').select('*').order('created_at', { ascending: false }),
-      supabase.from('exit_permissions').select('*').order('created_at', { ascending: false }),
+      supabase.from('exit_permissions')
+        .select('id, student_id, nis, student_name, unit_name, class_name, date, exit_time, expected_return_time, actual_return_time, purpose, pickup_by, officer_name, status, created_at')
+        .order('created_at', { ascending: false }),
+      supabase.from('exit_permissions')
+        .select('id')
+        .not('permit_letter_url', 'is', null),
       supabase.from('transport_records').select('*').order('created_at', { ascending: false }),
       supabase.from('notifications').select('*'),
       supabase.from('audit_logs').select('*').order('timestamp', { ascending: false }),
@@ -451,6 +457,11 @@ export async function fetchAllDataFromSupabase() {
       createdAt: la.created_at
     }));
 
+    if (exitPermissionsRes.error) {
+      console.warn('Supabase exit_permissions query error:', exitPermissionsRes.error);
+    }
+    const idsWithLetters = new Set((exitPermissionsLetterIdsRes?.data || []).map((x: any) => x.id));
+
     const exitPermissions: ExitPermissionRecord[] = (exitPermissionsRes.data || []).map((ep: any) => ({
       id: ep.id,
       studentId: ep.student_id,
@@ -464,7 +475,8 @@ export async function fetchAllDataFromSupabase() {
       actualReturnTime: ep.actual_return_time,
       purpose: ep.purpose,
       pickupBy: ep.pickup_by,
-      permitLetterUrl: ep.permit_letter_url || undefined,
+      permitLetterUrl: undefined, // Loaded on-demand when previewing to prevent timeout
+      hasPermitLetter: idsWithLetters.has(ep.id),
       officerName: ep.officer_name,
       status: ep.status,
       createdAt: ep.created_at
@@ -803,6 +815,24 @@ export async function dbUpdateExitPermissionStatus(id: string, status: string, a
 
 export async function dbDeleteExitPermission(id: string) {
   await supabase.from('exit_permissions').delete().eq('id', id);
+}
+
+export async function dbFetchExitPermissionLetter(id: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('exit_permissions')
+      .select('permit_letter_url')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) {
+      console.error('Error fetching permit letter:', error);
+      return null;
+    }
+    return data?.permit_letter_url || null;
+  } catch (err) {
+    console.error('Failed to load permit letter:', err);
+    return null;
+  }
 }
 
 export async function dbInsertTransportRecord(rec: TransportRecord) {

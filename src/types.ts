@@ -107,6 +107,7 @@ export interface ExitPermissionRecord {
   purpose: string; // e.g., Berobat, Acara Keluarga, Lomba
   pickupBy: string; // e.g., Ayah, Ibu, Supir
   permitLetterUrl?: string; // Uploaded permit letter image
+  hasPermitLetter?: boolean; // Flag if permit letter exists in database
   officerName: string;
   status: 'Belum Kembali' | 'Sudah Kembali' | 'Langsung Pulang';
   createdAt: string;
