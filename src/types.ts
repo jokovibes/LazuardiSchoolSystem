@@ -126,6 +126,7 @@ export interface TransportRecord {
   driverName?: string; // For online driver or pickup
   vehiclePlate?: string; // e.g. B 1234 XYZ
   vehiclePhotoUrl?: string; // Foto kendaraan / driver / penjemput
+  hasVehiclePhoto?: boolean; // Flag if vehicle photo exists in database
   officerName: string;
   createdAt: string;
 }

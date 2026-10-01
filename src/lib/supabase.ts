@@ -13,6 +13,7 @@ import {
   AuditLog, 
   SystemSetting 
 } from '../types';
+import { convertUtcToWibDate } from '../utils/timezone';
 
 const SUPABASE_URL = ((import.meta as any).env?.VITE_SUPABASE_URL) || 'https://plwpghfvhgafpvqvpypc.supabase.co';
 const SUPABASE_ANON_KEY = ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY) || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsd3BnaGZ2aGdhZnB2cXZweXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyOTU2MDYsImV4cCI6MjEwMDg3MTYwNn0.-wvmOJTF3vq495yZgN7xVYLI8NxY4iqT6E3bGvVyfws';
@@ -432,7 +433,7 @@ export async function fetchAllDataFromSupabase() {
       studentName: ea.student_name,
       unitName: ea.unit_name,
       className: ea.class_name,
-      date: ea.date,
+      date: convertUtcToWibDate(ea.date, ea.created_at),
       arrivalTime: ea.arrival_time,
       assemblyLocation: ea.assembly_location,
       officerName: ea.officer_name,
@@ -448,7 +449,7 @@ export async function fetchAllDataFromSupabase() {
       studentName: la.student_name,
       unitName: la.unit_name,
       className: la.class_name,
-      date: la.date,
+      date: convertUtcToWibDate(la.date, la.created_at),
       arrivalTime: la.arrival_time,
       lateReason: la.late_reason,
       officerName: la.officer_name,
@@ -469,7 +470,7 @@ export async function fetchAllDataFromSupabase() {
       studentName: ep.student_name,
       unitName: ep.unit_name,
       className: ep.class_name,
-      date: ep.date,
+      date: convertUtcToWibDate(ep.date, ep.created_at),
       exitTime: ep.exit_time,
       expectedReturnTime: ep.expected_return_time,
       actualReturnTime: ep.actual_return_time,
@@ -489,7 +490,7 @@ export async function fetchAllDataFromSupabase() {
       studentName: tr.student_name,
       unitName: tr.unit_name,
       className: tr.class_name,
-      date: tr.date,
+      date: convertUtcToWibDate(tr.date, tr.created_at),
       dismissalTime: tr.dismissal_time,
       transportMode: tr.transport_mode,
       driverName: tr.driver_name,

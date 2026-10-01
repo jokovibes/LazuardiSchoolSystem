@@ -23,6 +23,7 @@ import { Student, ExitPermissionRecord, SchoolUnit, StudentClass, User } from '.
 import { FaceScannerModal } from '../FaceScannerModal';
 import { exportToExcel, exportToPdf, shareRekapToUnit } from '../../utils/exporter';
 import { dbFetchExitPermissionLetter } from '../../lib/supabase';
+import { getWIBDateString, getWIBTimeString, convertUtcToWibDate, formatDateIndoWIB } from '../../utils/timezone';
 
 interface ExitPermissionViewProps {
   students: Student[];
@@ -47,7 +48,7 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
 }) => {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [exitTime, setExitTime] = useState<string>('10:30');
+  const [exitTime, setExitTime] = useState<string>(() => getWIBTimeString());
   const [expectedReturnTime, setExpectedReturnTime] = useState<string>('12:00');
   const [isDirectHome, setIsDirectHome] = useState<boolean>(false);
   const [purpose, setPurpose] = useState<string>('');
@@ -198,7 +199,8 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
       return;
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Pencatatan tanggal disesuaikan ke zona waktu WIB (UTC+7 / Asia/Jakarta)
+    const todayStr = getWIBDateString();
     const finalStatus = isDirectHome ? 'Langsung Pulang' : 'Belum Kembali';
     const finalExpectedReturn = isDirectHome ? 'Langsung Pulang' : expectedReturnTime;
     const finalActualReturn = isDirectHome ? '-' : undefined;
@@ -231,8 +233,8 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
   };
 
   const handleMarkReturned = (id: string) => {
-    const now = new Date();
-    const returnTime = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    // Waktu kembali dicatat menggunakan zona waktu WIB
+    const returnTime = getWIBTimeString();
     onUpdateStatus(id, 'Sudah Kembali', returnTime);
   };
 
@@ -240,44 +242,28 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
     onUpdateStatus(id, 'Langsung Pulang', '-');
   };
 
-  const formatDateIndo = (dateStr: string) => {
-    if (!dateStr) return '-';
-    try {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        const year = parts[0];
-        const monthIdx = parseInt(parts[1], 10) - 1;
-        const day = parts[2];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        if (monthIdx >= 0 && monthIdx < 12) {
-          return `${day} ${months[monthIdx]} ${year}`;
-        }
-      }
-      const d = new Date(dateStr);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-      }
-    } catch {
-      // fallback
-    }
-    return dateStr;
+  const formatDateIndo = (dateStr?: string, createdAt?: string) => {
+    return formatDateIndoWIB(dateStr, createdAt);
   };
 
   const filteredRecords = exitPermissions
     .filter(r => {
       const matchUnit = filterUnit === 'ALL' || (r.unitName || '').includes(filterUnit);
       const matchStatus = filterStatus === 'ALL' || r.status === filterStatus;
+      const wibDate = convertUtcToWibDate(r.date, r.createdAt);
+      const indoDate = formatDateIndoWIB(r.date, r.createdAt);
       const matchQuery = 
         (r.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (r.nis || '').includes(searchQuery) ||
         (r.purpose || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (r.date || '').includes(searchQuery);
+        wibDate.includes(searchQuery) ||
+        indoDate.toLowerCase().includes(searchQuery.toLowerCase());
       return matchUnit && matchStatus && matchQuery;
     })
     .sort((a, b) => {
-      // Urutkan berdasarkan tanggal & waktu terbaru (descending)
-      const dateA = a.date || (a.createdAt ? a.createdAt.split(' ')[0] : '');
-      const dateB = b.date || (b.createdAt ? b.createdAt.split(' ')[0] : '');
+      // Urutkan berdasarkan tanggal terbaru di zona waktu WIB (UTC+7) (descending)
+      const dateA = convertUtcToWibDate(a.date, a.createdAt);
+      const dateB = convertUtcToWibDate(b.date, b.createdAt);
       if (dateA !== dateB) {
         return dateB.localeCompare(dateA);
       }
@@ -293,19 +279,19 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
   const overdueCount = exitPermissions.filter(r => r.status === 'Belum Kembali').length;
 
   const handleExportExcel = () => {
-    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Jam Keluar', 'Jam Estimasi Kembali', 'Jam Aktual Kembali', 'Keperluan', 'Penjemput', 'Status'];
+    const headers = ['Tanggal (WIB)', 'NIS', 'Nama Siswa', 'Kelas', 'Unit', 'Jam Keluar (WIB)', 'Jam Estimasi Kembali', 'Jam Aktual Kembali', 'Keperluan', 'Penjemput', 'Status'];
     const rows = filteredRecords.map(r => [
-      r.date || '-', r.nis, r.studentName, r.className, r.unitName, r.exitTime, r.expectedReturnTime, r.actualReturnTime || '-', r.purpose, r.pickupBy, r.status
+      convertUtcToWibDate(r.date, r.createdAt) || '-', r.nis, r.studentName, r.className, r.unitName, r.exitTime, r.expectedReturnTime, r.actualReturnTime || '-', r.purpose, r.pickupBy, r.status
     ]);
-    exportToExcel('Siswa_Izin_Keluar', headers, rows, `Izin_Keluar_${new Date().toISOString().split('T')[0]}`);
+    exportToExcel('Siswa_Izin_Keluar', headers, rows, `Izin_Keluar_WIB_${getWIBDateString()}`);
   };
 
   const handleExportPdf = () => {
-    const headers = ['Tanggal', 'NIS', 'Nama Siswa', 'Kelas', 'Jam Keluar', 'Target Kembali', 'Keperluan', 'Status'];
+    const headers = ['Tanggal (WIB)', 'NIS', 'Nama Siswa', 'Kelas', 'Jam Keluar (WIB)', 'Target Kembali', 'Keperluan', 'Status'];
     const rows = filteredRecords.map(r => [
-      r.date || '-', r.nis, r.studentName, r.className, r.exitTime, r.expectedReturnTime, r.purpose, r.status
+      convertUtcToWibDate(r.date, r.createdAt) || '-', r.nis, r.studentName, r.className, r.exitTime, r.expectedReturnTime, r.purpose, r.status
     ]);
-    exportToPdf('Laporan Izin Keluar Sekolah', headers, rows, `Izin_Keluar_${new Date().toISOString().split('T')[0]}`);
+    exportToPdf('Laporan Izin Keluar Sekolah (WIB)', headers, rows, `Izin_Keluar_WIB_${getWIBDateString()}`);
   };
 
   return (
@@ -638,7 +624,12 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                <th className="p-3">Tanggal</th>
+                <th className="p-3">
+                  <div className="flex items-center gap-1.5">
+                    <span>Tanggal</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded font-bold">WIB</span>
+                  </div>
+                </th>
                 <th className="p-3">Siswa & NIS</th>
                 <th className="p-3">Kelas / Unit</th>
                 <th className="p-3">Jam Keluar</th>
@@ -660,9 +651,10 @@ export const ExitPermissionView: React.FC<ExitPermissionViewProps> = ({
                     <td className="p-3 text-slate-700 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                         <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <span>{formatDateIndo(record.date)}</span>
+                        <span>{formatDateIndoWIB(record.date, record.createdAt)}</span>
+                        <span className="text-[9px] bg-blue-50 text-blue-700 font-semibold px-1 py-0.5 rounded border border-blue-200">WIB</span>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono pl-5">{record.date}</p>
+                      <p className="text-[10px] text-slate-400 font-mono pl-5">{convertUtcToWibDate(record.date, record.createdAt)}</p>
                     </td>
                     <td className="p-3 font-semibold text-slate-800">
                       <p>{record.studentName}</p>

@@ -88,6 +88,7 @@ import {
   dbSaveSettings,
   testSupabaseConnection
 } from './lib/supabase';
+import { getWIBDateString } from './utils/timezone';
 
 export default function App() {
   // Auth State: Hak akses Security tidak perlu login. Default langsung membuka akun "Security Lazuardi" (security@lazuardi.sch.id).
@@ -354,8 +355,10 @@ export default function App() {
 
   // Handlers for Module 3: Exit Permissions
   const handleAddExitPermission = (record: Omit<ExitPermissionRecord, 'id' | 'createdAt'>) => {
+    const recordDate = record.date || getWIBDateString();
     const newRecord: ExitPermissionRecord = {
       ...record,
+      date: recordDate,
       id: `ext-${Date.now()}`,
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19)
     };

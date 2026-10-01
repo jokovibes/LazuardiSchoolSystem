@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Car, 
   Camera, 
@@ -21,11 +21,15 @@ import {
   Clock,
   AlertCircle,
   Calendar,
-  ArrowDownUp
+  ArrowDownUp,
+  Loader2,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Student, TransportRecord, TransportMode, SchoolUnit, StudentClass, User } from '../../types';
 import { FaceScannerModal } from '../FaceScannerModal';
 import { exportToExcel, exportToPdf, shareRekapToUnit } from '../../utils/exporter';
+import { dbFetchTransportVehiclePhoto } from '../../lib/supabase';
 
 interface TransportationViewProps {
   students: Student[];
@@ -63,11 +67,79 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
 
   // Lightbox Preview Modal State
   const [previewModalImage, setPreviewModalImage] = useState<{ url: string; title: string } | null>(null);
+  const [loadingPhotoId, setLoadingPhotoId] = useState<string | null>(null);
+  const [cachedPhotos, setCachedPhotos] = useState<Record<string, string>>({});
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(50);
+
+  // Compress image before saving to database to maintain speed and avoid timeout
+  const compressImage = (dataUrl: string, maxWidth = 800, quality = 0.75): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
+  const handlePreviewPhoto = async (record: TransportRecord) => {
+    const existing = record.vehiclePhotoUrl || cachedPhotos[record.id];
+    if (existing) {
+      setPreviewModalImage({
+        url: existing,
+        title: `Foto Kendaraan / Driver - ${record.studentName}`
+      });
+      return;
+    }
+
+    try {
+      setLoadingPhotoId(record.id);
+      const url = await dbFetchTransportVehiclePhoto(record.id);
+      if (url) {
+        setCachedPhotos(prev => ({ ...prev, [record.id]: url }));
+        setPreviewModalImage({
+          url,
+          title: `Foto Kendaraan / Driver - ${record.studentName}`
+        });
+      } else {
+        alert('Foto kendaraan tidak ditemukan di database.');
+      }
+    } catch (err) {
+      console.error('Error previewing vehicle photo:', err);
+      alert('Gagal memuat foto kendaraan.');
+    } finally {
+      setLoadingPhotoId(null);
+    }
+  };
 
   // Filters
   const [filterUnit, setFilterUnit] = useState<string>('ALL');
   const [filterMode, setFilterMode] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Reset to page 1 on filter or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterUnit, filterMode]);
 
   const transportModes: { mode: TransportMode; label: string; icon: React.ElementType }[] = [
     { mode: 'Kendaraan Online', label: 'Kendaraan Online (Gojek/Grab)', icon: Car },
@@ -110,16 +182,23 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
     setIsCameraActive(false);
   };
 
-  const capturePhotoFromCamera = () => {
+  const capturePhotoFromCamera = async () => {
     if (!videoRef.current) return;
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    const maxWidth = 800;
+    let width = video.videoWidth || 640;
+    let height = video.videoHeight || 480;
+    if (width > maxWidth) {
+      height = Math.round((height * maxWidth) / width);
+      width = maxWidth;
+    }
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
       setVehiclePhotoUrl(dataUrl);
       stopCamera();
     }
@@ -129,9 +208,11 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       if (event.target?.result) {
-        setVehiclePhotoUrl(event.target.result as string);
+        const raw = event.target.result as string;
+        const compressed = await compressImage(raw);
+        setVehiclePhotoUrl(compressed);
       }
     };
     reader.readAsDataURL(file);
@@ -240,6 +321,13 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
       }
       return (b.id || '').localeCompare(a.id || '');
     });
+
+  // Pagination calculations
+  const totalPages = pageSize === -1 ? 1 : Math.max(1, Math.ceil(filteredRecords.length / pageSize));
+  const currentActualPage = Math.min(currentPage, totalPages);
+  const paginatedRecords = pageSize === -1 
+    ? filteredRecords 
+    : filteredRecords.slice((currentActualPage - 1) * pageSize, currentActualPage * pageSize);
 
   // Analytics breakdown
   const onlineCount = transportRecords.filter(r => r.transportMode === 'Kendaraan Online').length;
@@ -568,6 +656,9 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-slate-800 text-base">Rekap Moda Transportasi & Kepulangan</h3>
+              <span className="text-xs bg-sky-100 text-sky-800 font-bold px-2.5 py-0.5 rounded-full">
+                {filteredRecords.length.toLocaleString('id-ID')} Data
+              </span>
               <span className="text-[10px] bg-sky-50 text-sky-700 border border-sky-200 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
                 <ArrowDownUp className="w-3 h-3" />
                 Terbaru di Paling Atas
@@ -643,12 +734,12 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredRecords.length === 0 ? (
+              {paginatedRecords.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="p-6 text-center text-slate-500">Belum ada catatan kepulangan.</td>
                 </tr>
               ) : (
-                filteredRecords.map(record => (
+                paginatedRecords.map(record => (
                   <tr key={record.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-3 text-slate-700 whitespace-nowrap">
                       <div className="flex items-center gap-1.5 font-semibold text-slate-800">
@@ -685,20 +776,39 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
                       {record.vehiclePlate ? `${record.driverName || '-'} (${record.vehiclePlate})` : (record.driverName || '-')}
                     </td>
                     <td className="p-3">
-                      {record.vehiclePhotoUrl ? (
+                      {(record.vehiclePhotoUrl || cachedPhotos[record.id]) ? (
                         <button
                           type="button"
-                          onClick={() => setPreviewModalImage({ url: record.vehiclePhotoUrl!, title: `Foto Kendaraan / Driver - ${record.studentName}` })}
+                          onClick={() => handlePreviewPhoto(record)}
                           className="relative group block overflow-hidden rounded-lg border border-slate-300 w-12 h-12 hover:ring-2 hover:ring-sky-500 transition-all cursor-pointer shadow-2xs"
                         >
                           <img
-                            src={record.vehiclePhotoUrl}
+                            src={record.vehiclePhotoUrl || cachedPhotos[record.id]}
                             alt={`Foto Kendaraan ${record.studentName}`}
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                             <Eye className="w-4 h-4 text-white" />
                           </div>
+                        </button>
+                      ) : record.hasVehiclePhoto ? (
+                        <button
+                          type="button"
+                          onClick={() => handlePreviewPhoto(record)}
+                          disabled={loadingPhotoId === record.id}
+                          className="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-lg font-bold text-[11px] flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          {loadingPhotoId === record.id ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600" />
+                              <span>Memuat...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Camera className="w-3.5 h-3.5 text-sky-600" />
+                              <span>Lihat Foto</span>
+                            </>
+                          )}
                         </button>
                       ) : (
                         <span className="text-slate-400 text-[11px] font-mono italic">- Tidak Ada -</span>
@@ -719,6 +829,60 @@ export const TransportationView: React.FC<TransportationViewProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination & Summary Controls */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200 text-xs text-slate-600">
+          <div className="flex flex-wrap items-center gap-2">
+            <span>
+              Menampilkan {filteredRecords.length === 0 ? 0 : (currentActualPage - 1) * (pageSize === -1 ? filteredRecords.length : pageSize) + 1} - {pageSize === -1 ? filteredRecords.length : Math.min(currentActualPage * pageSize, filteredRecords.length)} dari <strong className="text-slate-800 font-bold">{filteredRecords.length.toLocaleString('id-ID')}</strong> data
+            </span>
+            <span className="text-slate-300">|</span>
+            <label className="flex items-center gap-1.5">
+              <span>Baris per halaman:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 font-semibold text-slate-700 cursor-pointer"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={-1}>Semua</option>
+              </select>
+            </label>
+          </div>
+
+          {pageSize !== -1 && totalPages > 1 && (
+            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentActualPage <= 1}
+                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600"
+                title="Halaman Sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <span className="px-3 py-1 bg-slate-100 rounded-lg font-semibold text-slate-700">
+                Halaman {currentActualPage} / {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentActualPage >= totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600"
+                title="Halaman Selanjutnya"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
