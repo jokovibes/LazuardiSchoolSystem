@@ -859,6 +859,28 @@ export async function dbDeleteTransportRecord(id: string) {
   await supabase.from('transport_records').delete().eq('id', id);
 }
 
+export async function dbFetchTransportVehiclePhoto(
+  id: string
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('transport_records')
+      .select('vehicle_photo_url')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching vehicle photo:', error);
+      return null;
+    }
+
+    return data?.vehicle_photo_url || null;
+  } catch (err) {
+    console.error('Failed to load vehicle photo:', err);
+    return null;
+  }
+}
+
 export async function dbInsertStudent(std: Student) {
   await supabase.from('students').insert({
     id: std.id,
